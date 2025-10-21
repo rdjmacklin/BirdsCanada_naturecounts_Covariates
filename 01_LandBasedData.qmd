@@ -1,0 +1,302 @@
+---
+title: "Data Extraction"
+author: "Rory Macklin (rmacklin@birdscanada.org)"
+format: html
+editor: visual
+---
+
+# Goal
+
+In this document, we aim to demonstrate how a Nature Counts user may pull Information from various R packages interfacing with spatial datasets and pair them to datasets from Nature Counts. We demonstrate this using data from the British Columbia Marsh Monitoring Program which can be accessed via <https://www.doi.org/10.71842/3266-q231>. This is part of Birds Canada's commitment incorporate satellite earth observation data download into the naturecounts R package.
+
+# Code
+
+## Setup
+
+Upon downloading this repository, execute the included setup script to create necessary directories and load required packages.
+
+```{r}
+
+source("./Scripts/00_Setup.R")
+
+nc_login <- readline(prompt = "Enter Nature Counts username: ")
+nc_reqid <- as.numeric(readline(prompt = "Enter Nature Counts request id: "))
+ed_login <- readline(prompt = "Enter EarthData username: ")
+ed_pw <- readline(prompt = "Enter EarthData password: ")
+```
+
+## Downloading naturecounts data.
+
+Here, we download data from the BC Marsh Monitoring Program using the provided Nature Counts login info. We will convert this object into a spatial features (sf) object with each point buffered to a radial distance of 500m (the user can adjust this by modifying the *radius* object below).
+
+```{r}
+
+if(!file.exists("./Data/Raw/bcmmp.csv")) {
+  
+  dat <- nc_data_dl(username = nc_login, request_id = nc_reqid)
+
+  write_csv(dat, "./Data/Raw/bcmmp.csv")
+  
+} else {
+  
+  dat <- read_csv("./Data/Raw/bcmmp.csv")
+  
+}
+
+dat_sf <- dat %>%
+  filter(!(is.na(latitude) | is.na(longitude))) %>%
+  select(SiteCode, latitude, longitude, survey_year, survey_month, survey_day) %>%
+  distinct() %>%
+  arrange(SiteCode, survey_year, survey_month) %>%
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
+  st_transform("ESRI:102001")
+
+radius <- 500
+
+dat_buff <- st_buffer(dat_sf, radius)
+
+study_area <- st_bbox(dat_sf) %>%
+  st_as_sfc() %>%
+  st_buffer(2500) %>%
+  vect()
+
+rm(dat)
+
+```
+
+## Elevation data via *elevatr*
+
+Our first source of data will be the `elevatr` package, which accesses mosaicked elevation data through the [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) database. For Canada, the data comes from [CDEM](https://open.canada.ca/data/en/dataset/7f245e4d-76c2-4caa-951a-45d1d2051333) and [SRTM](https://www.earthdata.nasa.gov/data/instruments/srtm) for locations below 60° and [GMTED](https://www.usgs.gov/coastal-changes-and-impacts) for locations above 60°.
+
+```{r}
+
+# Download elevation data
+
+elev <- get_elev_raster(locations = dat_sf,
+                        z = 7,
+                        prj = st_crs(dat_sf),
+                        src = "aws", # In future, check other sources. Others more appropriate for CDN users?
+                        expand = 2500,
+                        neg_to_na = TRUE,
+                        verbose = T) %>% # Turn ocean tiles with negative elevation to NAs.
+  rast() # Convert to terra object.
+
+for(i in unique(dat_sf$SiteCode)) {
+  
+  tmp <- dat_buff %>%
+    filter(SiteCode == i) %>%
+    select(SiteCode, geometry) %>%
+    distinct()
+  
+  dat_sf[dat_sf$SiteCode == i, "elevation"] <- exact_extract(x = elev,
+                                                             y = tmp,
+                                                             fun = "mean",
+                                                             progress = FALSE) # additionally specify weights if using weighted metric using 'weights' argument.
+  
+}
+
+# Tidy up
+
+rm(elev)
+rm(tmp)
+rm(i)
+```
+
+## Climate data via *geodata*
+
+```{r}
+
+clim_vars <- c("tavg", "prec") # other options include min temperature (tmin), max temperature (tmax), incident solar radiation (srad), wind speed (wind), vapor pressure (vapr).
+
+for(i in clim_vars) {
+  
+  clim <- worldclim_country(var = i, 
+                                 country = "Canada", 
+                                 res = 0.5,
+                                 path = "./Data/Raw")
+  
+  clim <- crop(clim, project(study_area, crs(clim))) %>%
+    project(crs(dat_buff))
+  
+  for(j in unique(dat_sf$SiteCode)) {
+  
+    tmp <- dat_buff %>%
+      filter(SiteCode == j) %>%
+      select(SiteCode, survey_month, geometry) %>%
+      distinct()
+      
+    for(k in unique(dat_sf$survey_month[dat_sf$SiteCode == j])) {
+    
+      dat_sf[dat_sf$SiteCode == j & dat_sf$survey_month == k, i] <- exact_extract(x = clim[[paste0("CAN_wc2.1_30s_", i, "_", k)]], y = tmp %>% filter(survey_month == k), fun = "mean")
+    
+      }
+  
+     rm(tmp)
+  
+  }
+  
+  rm(clim)
+  
+}
+
+rm(i)
+rm(j)
+rm(k)
+```
+
+## Landcover data via *geodata*
+
+Data from [ESA Worldcover](https://esa-worldcover.org/en) at a 10-minute resolution, derived from imagery from 2020/2021. Looking for a better time-series option but availability seems limited - MODIS functionality is sketchy as server access appears inconsistent.
+
+```{r}
+
+lc_vars <- c("trees", "cropland", "built", "water", "wetland") # other options include "grassland", "bare", "snow", "mangroves", "moss".
+
+for(i in lc_vars) {
+  
+  landcover(var = i, path = paste0("./Data/Raw"))
+  
+  lc <- rast(paste0("./Data/Raw/landuse/WorldCover_", i, "_30s.tif"))
+  
+  lc <- crop(lc, project(study_area, crs(lc))) %>%
+    project(crs(dat_buff))
+  
+  for(j in unique(dat_sf$SiteCode)) {
+    
+      tmp <- dat_buff %>%
+        filter(SiteCode == j) %>%
+        select(SiteCode, geometry) %>%
+        distinct()
+
+      dat_sf[dat_sf$SiteCode == j, paste0("lc_",i)] <- exact_extract(x = lc,
+                                                                     y = tmp,
+                                                                     fun = "mean",
+                                                                     progress = FALSE)
+    
+      rm(tmp)
+  }
+  
+  rm(lc)
+  
+}
+
+rm(i)
+rm(j)
+
+```
+
+## MODIS landcover data via *luna*
+
+Data from MODIS at a 500m annual resolution. Better option than geodata if possible. Quality control?
+
+```{r}
+
+if(!dir.exists("./Data/Raw/modis")) {
+  
+  dir.create("./Data/Raw/modis")
+  
+}
+
+product <- "MCD12Q1"
+
+start <- paste0(min(dat_sf$survey_year), "-01-01")
+end <- paste0(max(dat_sf$survey_year), "-12-31")
+
+modis.files <- luna::getNASA(product, 
+                             start, 
+                             end, 
+                             aoi=project(study_area, "epsg:4326"), 
+                             download=TRUE, 
+                             overwrite=TRUE,
+                             path="./Data/Raw/modis", 
+                             username=ed_login, 
+                             password=ed_pw)
+
+modis.files <- modisDate(modis.files)
+modis.files <- cbind(modis.files, as.data.frame(modisExtent(modis.files$filename)))
+
+modis.match <- dat_sf %>%
+  select(SiteCode, survey_year, geometry) %>%
+  st_transform(crs(rast(modis.files$filename[1])))
+
+modis.match <- cbind(modis.match, st_coordinates(modis.match))
+
+for(i in unique(modis.match$SiteCode)) {
+  
+  for(j in unique(modis.match$survey_year[modis.match$SiteCode == i])) {
+          
+    tmp <- filter(modis.match, SiteCode == i, survey_year == j)
+
+    suppressWarnings(
+      
+    if(j == 2025) {
+      
+      modis.match[modis.match$SiteCode == i & modis.match$survey_year == j, "filename"] <- modis.files$filename[modis.files$year == 2024 & modis.files$xmin < tmp$X & modis.files$xmax > tmp$X & modis.files$ymin < tmp$Y & modis.files$ymax > tmp$Y]
+      
+    } else {
+      
+      modis.match[modis.match$SiteCode == i & modis.match$survey_year == j, "filename"] <- modis.files$filename[modis.files$year == tmp$survey_year & modis.files$xmin < tmp$X & modis.files$xmax > tmp$X & modis.files$ymin < tmp$Y & modis.files$ymax > tmp$Y]
+      
+    }
+    
+    )
+    
+  }
+  
+  rm(tmp)
+  
+}
+
+modis.classes <- data.frame(class = c(0:15, 255), name = c("water", "evergreen_needleleaf", "evergreen_broadleaf", "deciduous_needleleaf", "deciduous_broadleaf", "mixed_forest", "closed_shrublands", "open_shrublands", "woody_savannas", "savannas", "grasslands", "permanent_wetlands", "croplands", "urban_built_lands", "cropland_vegetation_mosaic", "nonvegetated_lands", "unclassified"))
+
+for(i in unique(modis.match$filename)) {
+  
+  pts_to_fill <- dat_sf[dat_sf$SiteCode %in% modis.match$SiteCode[modis.match$filename == i],]
+  
+  modis <- rast(i)$LC_Type2
+  
+  for(j in unique(pts_to_fill$SiteCode)) {
+    
+    tmp <- dat_buff %>%
+      filter(SiteCode == j) %>%
+      select(SiteCode, geometry) %>%
+      distinct() %>%
+      st_transform(crs(modis)) %>%
+      vect()
+    
+    modis_clip <- crop(modis, tmp)
+      
+    modis_pland <- calculate_lsm(modis_clip, metric = "pland")
+    
+    for(k in modis_pland$class) {
+      
+      dat_sf[dat_sf$SiteCode == j & dat_sf$survey_year %in% modis.match$survey_year[modis.match$filename == i], modis_classes$name[modis_classes$class == k]] <- modis_pland$value[modis_pland$class == k]
+      
+    }
+    
+  }
+  
+  rm(tmp)
+  rm(modis_clip)
+  rm(modis_pland)
+  rm(pts_to_fill)
+  rm(modis)
+  
+}
+
+for(i in modis.classes$name[modis_classes$name %in% names(dat_sf)]) {
+  
+  dat_sf[is.na(dat_sf[,i] %>% st_drop_geometry()), i] <- 0
+  
+}
+
+rm(modis.files)
+rm(modis.classes)
+rm(modis.match)
+rm(i)
+rm(j)
+rm(k)
+rm(product)
+rm(start)
+rm(end)
+```
