@@ -39,7 +39,8 @@ if(system.file(package = "naturecounts") == "") {
 }
 
 librarian::shelf(naturecounts, tidyverse, sf, "USEPA/elevatr", terra, exactextractr,
-                 "rspatial/geodata", biooracler, "rspatial/luna", landscapemetrics)
+                 "rspatial/geodata", biooracler, "rspatial/luna", landscapemetrics,
+                 "ABbiodiversity/wildrtrax")
 
 # Delete unnecessary objects
 
