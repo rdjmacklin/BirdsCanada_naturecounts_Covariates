@@ -30,7 +30,7 @@ if(system.file(package = "naturecounts") == "") {
   
 }
 
-librarian::shelf(naturecounts, tidyverse, sf, "USEPA/elevatr", terra, exactextractr,
+librarian::shelf(naturecounts, tidyverse, sf, "USEPA/elevatr", terra, exactextractr, geodata,
                  biooracler, "rspatial/luna", landscapemetrics, measurements)
 
 ## Load NatureCounts data
@@ -70,13 +70,13 @@ if(!file.exists("./Data/Raw/bccws.csv")) {
 
 nc_covariate_table <- function() {
   
-  cov.table <- data.frame(covariate_name = c("modis_lctype1", "modis_lctype2", "modis_lctype3", "modis_lctype4", "modis_lctype5", "modis_snow", "modis_ndvi", "modis_evi"),
-                          covariate_source = c("MODIS Land Cover - IGBP global vegetation classification scheme", "MODIS Land Cover - University of Maryland (UMD) scheme", "MODIS Land Cover - MODIS-derived LAI/fPAR scheme", "MODIS Land Cover - MODIS-derived Net Primary Production scheme", "MODIS Land Cover - Plant Functional Type (PFT) scheme", "MODIS Snow Cover", "MODIS Vegetation Indices - Normalized Difference Vegetation Index", "MODIS Vegetation Indices - Enhanced Vegetation Index"),
-                          covariate_source_specific = c(rep("MCD12Q1", times = 5), "MOD10A1", rep("MOD13A1", times = 2)),
-                          temporal_resolution = c(rep("Annual", times = 5), "Daily", rep("16-Day", times = 2)),
-                          spatial_resolution = "500 m",
-                          via = "luna",
-                          documentation = c(rep("http://doi.org/10.5067/MODIS/MCD12Q1.006", times = 5), "http://doi.org/10.5067/MODIS/MOD10A1.061", rep("https://doi.org/10.5067/MODIS/MOD13A1.061", times = 2)))
+  cov.table <- data.frame(covariate_name = c("modis_lctype1", "modis_lctype2", "modis_lctype3", "modis_lctype4", "modis_lctype5", "modis_snow", "modis_ndvi", "modis_evi", "elevation", "worldclim_tavg", "worldclim_tmax", "worldclim_tmin", "worldclim_prec", "worldclim_srad", "worldclim_wind", "worldclim_vapr"),
+                          covariate_source = c("MODIS Land Cover - IGBP global vegetation classification scheme", "MODIS Land Cover - University of Maryland (UMD) scheme", "MODIS Land Cover - MODIS-derived LAI/fPAR scheme", "MODIS Land Cover - MODIS-derived Net Primary Production scheme", "MODIS Land Cover - Plant Functional Type (PFT) scheme", "MODIS Snow Cover", "MODIS Vegetation Indices - Normalized Difference Vegetation Index", "MODIS Vegetation Indices - Enhanced Vegetation Index", "AWS Terrain Tiles Elevation (m)", "WorldClim - Monthly Average Temperature (degC), 1970-2000", "WorldClim - Monthly Maximum Temperature (degC), 1970-2000", "WorldClim - Monthly Minimum Temperature (degC), 1970-2000", "WorldClim - Monthly Precipitation (mm), 1970-2000", "WorldClim - Monthly Solar Radiation (kJ/m^2/day), 1970-2000", "WorldClim - Monthly Average Wind Speed (m/s), 1970-2000", "WorldClim - Monthly Average Water Vapor Pressure (kPa), 1970-2000"),
+                          covariate_source_specific = c(rep("MCD12Q1", times = 5), "MOD10A1", rep("MOD13A1", times = 2), NA, rep("WorldClim Ver. 2.1", times = 7)),
+                          temporal_resolution = c(rep("Annual", times = 5), "Daily", rep("16-Day", times = 2), rep("Static", times = 8)),
+                          spatial_resolution = c(rep("500 m", times = 8), "~600-800m", rep("~1 km^2", times = 7)),
+                          via = c(rep("luna", times = 8), "elevatr", rep("geodata", times = 7)),
+                          documentation = c(rep("http://doi.org/10.5067/MODIS/MCD12Q1.006", times = 5), "http://doi.org/10.5067/MODIS/MOD10A1.061", rep("https://doi.org/10.5067/MODIS/MOD13A1.061", times = 2), "https://github.com/USEPA/elevatr", rep("https://worldclim.org/data/worldclim21.html", times = 7)))
   
   return(cov.table)
   
@@ -731,10 +731,175 @@ nc_covariates <- function(data, data_type = "df", covariates = "none", buffer = 
     
   }
   
+  # Next up: elevation from elevatr
+  
+  if("elevation" %in% covariates) {
+    
+    elev <- get_elev_raster(locations = spatial_set,
+                            z = 7,
+                            prj = st_crs(spatial_set),
+                            src = "aws", # In future, check other sources. Others more appropriate for CDN users?
+                            expand = ifelse(buffer == TRUE, 2*conv_unit(x = buffer_radius, from = buffer_units, to = "m"), 1000),
+                            neg_to_na = TRUE, # Turn ocean tiles with negative elevation to NAs.
+                            verbose = F) %>%
+      rast()
+    
+    for(i in unique(spatial_set$SiteCode)) {
+      
+      tmp <- spatial_set %>%
+        filter(SiteCode == i) %>%
+        select(SiteCode, geometry) %>%
+        distinct()
+      
+      if(buffer == FALSE) {
+        
+        spatial_set[spatial_set$SiteCode == i, "elevation"] <- terra::extract(x = elev,
+                                                                              y = tmp,
+                                                                              fun = "mean")[,names(elev)] # additionally specify weights if using weighted metric using 'weights' argument.
+        
+        
+      } else {
+        
+        spatial_set[spatial_set$SiteCode == i, "elevation"] <- exact_extract(x = elev,
+                                                                             y = tmp,
+                                                                             fun = "mean",
+                                                                             progress = FALSE) # additionally specify weights if using weighted metric using 'weights' argument.
+        
+      }
+      
+    }
+    
+    if(TRUE %in% is.na(spatial_set$elevation)) {
+      
+      warning("AWS Elevation: some points are close to shore, and so fall into cells with negative elevation (below sea level). For these cells, the nearest positive elevation has been used.")
+      
+      for(i in unique(spatial_set$SiteCode[is.na(spatial_set$elevation)])) {
+        
+        tmp <- spatial_set %>%
+          filter(SiteCode == i) %>%
+          select(SiteCode, geometry) %>%
+          distinct() %>%
+          st_buffer(2500)
+        
+        elev_crop <- crop(elev, vect(tmp)) %>%
+          as.points()
+        
+        spatial_set$elevation[spatial_set$SiteCode == i] <- values(elev_crop[nearest(vect(tmp), elev_crop)$to_id])
+        
+      }
+      
+    }
+    
+  }
+  
+  # Climate variables from WorldClim
+  
+  if(length(grep("worldclim_", covariates)) > 0) {
+    
+    if(is.na(dl_path) & !dir.exists("./worldclim")) {
+      
+      dir.create("./worldclim", recursive = T)
+      
+    }
+    
+    if(!is.na(dl_path) & !dir.exists(paste0(dl_path, "/worldclim"))) {
+      
+      dir.create(paste0(dl_path, "/worldclim"), recursive = T)
+      
+    }
+    
+    clim_vars <- gsub(pattern = "worldclim_", replacement = "", grep("worldclim_", covariates, value = T))
+    
+    #### NEED TO CHECK THAT MONTH DATA IS VALID
+    
+    for(i in clim_vars) {
+      
+      if(!file.exists(ifelse(is.na(dl_path), paste0("./worldclim/climate/wc2.1_country/CAN_wc2.1_30s_", i, ".tif"), paste0(dl_path, "/worldclim/climate/wc2.1_country/CAN_wc2.1_30s_", i, ".tif")))) {
+        
+        clim <- worldclim_country(var = i, 
+                                  country = "Canada", ### ADD WAY TO INCORPORATE OTHER COUNTRIES?
+                                  res = 0.5,
+                                  path = ifelse(is.na(dl_path), "./worldclim", paste0(dl_path, "/worldclim")))
+        
+      } else {
+        
+        clim <- rast(ifelse(is.na(dl_path), paste0("./worldclim/climate/wc2.1_country/CAN_wc2.1_30s_", i, ".tif"), paste0(dl_path, "/worldclim/climate/wc2.1_country/CAN_wc2.1_30s_", i, ".tif")))
+        
+      }
+      
+      clim <- crop(clim, project(study_area, crs(clim))) %>%
+        project(crs(spatial_set))
+      
+      for(j in unique(spatial_set$SiteCode)) {
+        
+        tmp <- spatial_set %>%
+          filter(SiteCode == j) %>%
+          select(SiteCode, survey_month, geometry) %>%
+          distinct()
+        
+        for(k in unique(spatial_set$survey_month[spatial_set$SiteCode == j])) {
+          
+          if(buffer == TRUE) {
+            
+            spatial_set[spatial_set$SiteCode == j & spatial_set$survey_month == k, i] <- exact_extract(x = clim[[paste0("CAN_wc2.1_30s_", i, "_", k)]], 
+                                                                                                       y = tmp %>% filter(survey_month == k), 
+                                                                                                       fun = "mean")
+            
+          } else {
+            
+            spatial_set[spatial_set$SiteCode == j & spatial_set$survey_month == k, i] <- terra::extract(x = clim[[paste0("CAN_wc2.1_30s_", i, "_", k)]], 
+                                                                                                        y = tmp %>% filter(survey_month == k), 
+                                                                                                        fun = "mean", na.rm = TRUE)[,paste0("CAN_wc2.1_30s_", i, "_", k)]
+            
+          }
+          
+          
+        }
+        
+      }
+      
+      if(TRUE %in% is.na(spatial_set[,i])) {
+        
+        warning(paste0("WorldClim [", i, "]: some points are close to shore, and so fall outside of raster coverage. For these cells, the nearest cell value has been used."))
+        
+        for(j in unique(spatial_set$SiteCode[is.na(spatial_set[,i])])) {
+          
+          for(k in unique(spatial_set$survey_month[spatial_set$SiteCode == j])) {
+            
+            tmp <- spatial_set %>%
+              filter(SiteCode == j, survey_month == k) %>%
+              select(SiteCode, survey_month, geometry) %>%
+              distinct() %>%
+              st_buffer(2500)
+            
+            clim_crop <- crop(clim[[paste0("CAN_wc2.1_30s_", i, "_", k)]], vect(tmp)) %>%
+              as.points()
+            
+            spatial_set[spatial_set$SiteCode == j & spatial_set$survey_month == k, i] <- values(clim_crop[nearest(vect(tmp), clim_crop)$to_id])
+            
+          }
+          
+        }
+        
+      }
+      
+    }
+    
+    if(retain == FALSE) {
+      
+      message(paste0("WorldClim extraction complete. Removing files."))
+      
+      file.remove(list.files(ifelse(is.na(dl_path), "./worldclim", paste0(dl_path, "/worldclim")), full.names = T))
+      
+    }
+    
+  }
+  
   data <- left_join(data, spatial_set %>% st_drop_geometry(), by = c("SiteCode", "survey_year", "survey_month", "survey_day"))
   
   return(data)
+  
 }
 
-out <- nc_covariates(land.dat, data_type = "df", covariates = c("modis_lctype1", "modis_ndvi", "modis_evi"), buffer = FALSE,
+out <- nc_covariates(land.dat, data_type = "df", covariates = c("worldclim_tavg", "worldclim_prec"), buffer = TRUE, buffer_radius = 500, buffer_units = "m",
                      ed_login = ed_login, ed_password = ed_pw, retain = TRUE)
