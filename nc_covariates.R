@@ -70,13 +70,13 @@ if(!file.exists("./Data/Raw/bccws.csv")) {
 
 nc_covariate_table <- function() {
   
-  cov.table <- data.frame(covariate_name = c("modis_lctype1", "modis_lctype2", "modis_lctype3", "modis_lctype4", "modis_lctype5", "modis_snow", "modis_ndvi", "modis_evi", "elevation", "worldclim_tavg", "worldclim_tmax", "worldclim_tmin", "worldclim_prec", "worldclim_srad", "worldclim_wind", "worldclim_vapr"),
-                          covariate_source = c("MODIS Land Cover - IGBP global vegetation classification scheme", "MODIS Land Cover - University of Maryland (UMD) scheme", "MODIS Land Cover - MODIS-derived LAI/fPAR scheme", "MODIS Land Cover - MODIS-derived Net Primary Production scheme", "MODIS Land Cover - Plant Functional Type (PFT) scheme", "MODIS Snow Cover", "MODIS Vegetation Indices - Normalized Difference Vegetation Index", "MODIS Vegetation Indices - Enhanced Vegetation Index", "AWS Terrain Tiles Elevation (m)", "WorldClim - Monthly Average Temperature (degC), 1970-2000", "WorldClim - Monthly Maximum Temperature (degC), 1970-2000", "WorldClim - Monthly Minimum Temperature (degC), 1970-2000", "WorldClim - Monthly Precipitation (mm), 1970-2000", "WorldClim - Monthly Solar Radiation (kJ/m^2/day), 1970-2000", "WorldClim - Monthly Average Wind Speed (m/s), 1970-2000", "WorldClim - Monthly Average Water Vapor Pressure (kPa), 1970-2000"),
-                          covariate_source_specific = c(rep("MCD12Q1", times = 5), "MOD10A1", rep("MOD13A1", times = 2), NA, rep("WorldClim Ver. 2.1", times = 7)),
-                          temporal_resolution = c(rep("Annual", times = 5), "Daily", rep("16-Day", times = 2), rep("Static", times = 8)),
-                          spatial_resolution = c(rep("500 m", times = 8), "~600-800m", rep("~1 km^2", times = 7)),
-                          via = c(rep("luna", times = 8), "elevatr", rep("geodata", times = 7)),
-                          documentation = c(rep("http://doi.org/10.5067/MODIS/MCD12Q1.006", times = 5), "http://doi.org/10.5067/MODIS/MOD10A1.061", rep("https://doi.org/10.5067/MODIS/MOD13A1.061", times = 2), "https://github.com/USEPA/elevatr", rep("https://worldclim.org/data/worldclim21.html", times = 7)))
+  cov.table <- data.frame(covariate_name = c("modis_lctype1", "modis_lctype2", "modis_lctype3", "modis_lctype4", "modis_lctype5", "modis_snow", "modis_ndvi", "modis_evi", "elevation", "worldclim_tavg", "worldclim_tmax", "worldclim_tmin", "worldclim_prec", "worldclim_srad", "worldclim_wind", "worldclim_vapr", "scanfi_biomass", "scanfi_closure", "scanfi_height", "scanfi_nfilc", "scanfi_balsamfir", "scanfi_blackspruce", "scanfi_douglasfir", "scanfi_jackpine", "scanfi_lodgepolepine", "scanfi_ponderosapine", "scanfi_tamarack", "scanfi_whiteredpine", "scanfi_broadleaf", "scanfi_otherconifer"),
+                          covariate_source = c("MODIS Land Cover - IGBP global vegetation classification scheme", "MODIS Land Cover - University of Maryland (UMD) scheme", "MODIS Land Cover - MODIS-derived LAI/fPAR scheme", "MODIS Land Cover - MODIS-derived Net Primary Production scheme", "MODIS Land Cover - Plant Functional Type (PFT) scheme", "MODIS Snow Cover", "MODIS Vegetation Indices - Normalized Difference Vegetation Index", "MODIS Vegetation Indices - Enhanced Vegetation Index", "AWS Terrain Tiles Elevation (m)", "WorldClim - Monthly Average Temperature (degC), 1970-2000", "WorldClim - Monthly Maximum Temperature (degC), 1970-2000", "WorldClim - Monthly Minimum Temperature (degC), 1970-2000", "WorldClim - Monthly Precipitation (mm), 1970-2000", "WorldClim - Monthly Solar Radiation (kJ/m^2/day), 1970-2000", "WorldClim - Monthly Average Wind Speed (m/s), 1970-2000", "WorldClim - Monthly Average Water Vapor Pressure (kPa), 1970-2000", "SCANFI - Biomass (tons/ha)", "SCANFI - Crown closure (% covered by tree canopy)", "SCANFI - Height (m)", "SCANFI - NFI land cover class", "SCANFI - Balsam Fir cover proportion of total crown cover", "SCANFI - Black Spruce cover proportion of total crown cover", "SCANFI - Douglas Fir cover proportion of total crown cover", "SCANFI - Jack Pine cover proportion of total crown cover", "SCANFI - Lodgepole Pine cover proportion of total crown cover", "SCANFI - Ponderosa Pine cover proportion of total crown cover", "SCANFI - Tamarack cover proportion of total crown cover", "SCANFI - White and Red Pine cover proportion of total crown cover", "SCANFI - Broadleaf tree species cover proportion of total crown cover", "SCANFI - Other Conifer Species cover proportion of total crown cover"),
+                          covariate_source_specific = c(rep("MCD12Q1", times = 5), "MOD10A1", rep("MOD13A1", times = 2), NA, rep("WorldClim Ver. 2.1", times = 7), rep("SCANFI Ver 1.2", times = 14)),
+                          temporal_resolution = c(rep("Annual", times = 5), "Daily", rep("16-Day", times = 2), rep("Static", times = 22)),
+                          spatial_resolution = c(rep("500 m", times = 8), "~600-800m", rep("~1 km^2", times = 7), rep("30 m", times = 14)),
+                          via = c(rep("luna", times = 8), "elevatr", rep("geodata", times = 7), rep("Direct Download", times = 14)),
+                          documentation = c(rep("http://doi.org/10.5067/MODIS/MCD12Q1.006", times = 5), "http://doi.org/10.5067/MODIS/MOD10A1.061", rep("https://doi.org/10.5067/MODIS/MOD13A1.061", times = 2), "https://github.com/USEPA/elevatr", rep("https://worldclim.org/data/worldclim21.html", times = 7), rep("https://doi.org/10.23687/18e6a919-53fd-41ce-b4e2-44a9707c52dc", times = 14)))
   
   return(cov.table)
   
@@ -895,11 +895,192 @@ nc_covariates <- function(data, data_type = "df", covariates = "none", buffer = 
     
   }
   
+  # SCANFI variables
+  
+  if(length(grep("scanfi_", covariates)) > 0) {
+    
+    if(is.na(dl_path) & !dir.exists("./scanfi")) {
+      
+      dir.create("./scanfi", recursive = T)
+      
+    }
+    
+    if(!is.na(dl_path) & !dir.exists(paste0(dl_path, "/scanfi"))) {
+      
+      dir.create(paste0(dl_path, "/scanfi"), recursive = T)
+      
+    }
+    
+    scanfi_vars <- gsub(pattern = "scanfi_", replacement = "", grep("scanfi_", covariates, value = T))
+    
+    filename <- data.frame(variable = scanfi_vars) %>%
+      mutate(filename = case_when(variable == "biomass" ~ "https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/SCANFI/v1/SCANFI_att_biomass_SW_2020_v1.2.tif",
+                                  variable == "closure" ~ "https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/SCANFI/v1/SCANFI_att_closure_SW_2020_v1.2.tif",
+                                  variable == "height" ~ "https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/SCANFI/v1/SCANFI_att_height_SW_2020_v1.2.tif",
+                                  variable == "nfilc" ~ "https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/SCANFI/v1/SCANFI_att_nfiLandCover_SW_2020_v1.2.tif",
+                                  variable == "balsamfir" ~ "https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/SCANFI/v1/SCANFI_sps_balsamFir_SW_2020_v1.2.tif",
+                                  variable == "blackspruce" ~ "https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/SCANFI/v1/SCANFI_sps_blackSpruce_SW_2020_v1.2.tif",
+                                  variable == "douglasfir" ~ "https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/SCANFI/v1/SCANFI_sps_douglasFir_SW_2020_v1.2.tif",
+                                  variable == "jackpine" ~ "https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/SCANFI/v1/SCANFI_sps_jackPine_SW_2020_v1.2.tif",
+                                  variable == "lodgepolepine" ~ "https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/SCANFI/v1/SCANFI_sps_lodgepolePine_SW_2020_v1.2.tif",
+                                  variable == "ponderosapine" ~ "https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/SCANFI/v1/SCANFI_sps_ponderosaPine_SW_2020_v1.2.tif",
+                                  variable == "tamarack" ~ "https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/SCANFI/v1/SCANFI_sps_tamarack_SW_2020_v1.2.tif",
+                                  variable == "whiteredpine" ~ "https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/SCANFI/v1/SCANFI_sps_whiteRedPine_SW_2020_v1.2.tif",
+                                  variable == "broadleaf" ~ "https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/SCANFI/v1/SCANFI_sps_prcB_SW_2020_v1.2.tif",
+                                  variable == "otherconifer" ~ "https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/SCANFI/v1/SCANFI_sps_prcC_other_SW_2020_v1.2.tif"))
+    
+    ### SOMETHING TO NOTE: THE SPECIES LEVEL COVERS ARE COVER OF TOTAL CANOPY COVER, SO COVER OF A SP IN A CELL IS SPECIES LEVEL COVER * CANOPY COVER. MESSAGE ABOUT THIS OR BUILD IN?
+    
+    for(i in scanfi_vars) {
+      
+      ### WILL NEED TO CHECK IF DATA IS IN ARCTIC RANGE AND WARN.
+      ### OUT OF COVERAGE WARNING?
+      
+      if(!file.exists(ifelse(is.na(dl_path), paste0("./scanfi/", last(unlist(str_split(filename$filename[filename$variable == i], "/")))), paste0(dl_path, "/scanfi/", last(unlist(str_split(filename$filename[filename$variable == i], "/"))))))) {
+        
+        message("SCANFI files are large, and require a fair bit of download and processing time.")
+        
+        ### USING METHODS OTHER THAN CURL SEEMS TO CAUSE ISSUES WITH DOWNLOADED FILE - NEED TO CONSIDER CURL COMPATIBILITY WITH OTHER OS'S.
+        
+        download.file(url = filename$filename[filename$variable == i], destfile = ifelse(is.na(dl_path), paste0("./scanfi/", last(unlist(str_split(filename$filename[filename$variable == i], "/")))), paste0(dl_path, "/scanfi/", last(unlist(str_split(filename$filename[filename$variable == i], "/"))))), method = "curl")
+        
+        scanfi <- rast(ifelse(is.na(dl_path), paste0("./scanfi/", last(unlist(str_split(filename$filename[filename$variable == i], "/")))), paste0(dl_path, "/scanfi/", last(unlist(str_split(filename$filename[filename$variable == i], "/"))))))
+        
+        scanfi <- crop(scanfi, project(study_area, crs(scanfi)))
+        
+        } else {
+        
+          scanfi <- rast(ifelse(is.na(dl_path), paste0("./scanfi/", last(unlist(str_split(filename$filename[filename$variable == i], "/")))), paste0(dl_path, "/scanfi/", last(unlist(str_split(filename$filename[filename$variable == i], "/"))))))
+          
+          scanfi <- crop(scanfi, project(study_area, crs(scanfi)))
+          
+        }
+      
+      if(i == "nfilc") {
+        
+        nfilc.classes <- data.frame(class = c(1:8), name = c("bryoid", "herbs", "rock", "shrub", "treed_broadleaf", "treed_conifer", "treed_mixed", "water"))
+        
+        for(j in unique(spatial_set$SiteCode)) {
+          
+          if(buffer == TRUE) {
+            
+            tmp <- spatial_set %>%
+              filter(SiteCode == j) %>%
+              select(SiteCode, geometry) %>%
+              distinct() %>%
+              st_transform(crs(scanfi)) %>%
+              vect()
+            
+            scanfi_clip <- crop(scanfi, tmp)
+            
+            scanfi_pland <- calculate_lsm(scanfi_clip, metric = "pland")
+            
+            for(k in scanfi_pland$class) {
+              
+              spatial_set[spatial_set$SiteCode == j, paste0("nfilc_", nfilc.classes$name[nfilc.classes$class == k])] <- scanfi_pland$value[scanfi_pland$class == k]
+              
+            }
+            
+            for(k in paste0("nfilc_", nfilc.classes$name[paste0("nfilc_", nfilc.classes$name) %in% names(spatial_set)])) {
+              
+              spatial_set[is.na(spatial_set[,k] %>% st_drop_geometry()), k] <- 0
+              
+            }
+            
+          } else {
+            
+            tmp <- spatial_set %>%
+              filter(SiteCode == j) %>%
+              select(SiteCode, geometry) %>%
+              distinct() %>%
+              st_transform(crs(scanfi))
+            
+            extr_table <- terra::extract(scanfi, tmp, fun = unique)[,"SCANFI_att_nfiLandCover_SW_2020_v1.2"]
+            
+            if(class(extr_table) == "integer") {
+              
+              extr_table <- extr_table %>%
+                as.data.frame()
+              
+              names(extr_table) <- "class"
+              
+              extr_table <- left_join(extr_table, nfilc.classes, by = "class")
+              
+            } else {
+              
+              extr_table <- extr_table %>%
+                as.data.frame() %>%
+                select(SCANFI_att_nfiLandCover_SW_2020_v1.2)
+              
+              names(extr_table) <- "class"
+              
+              extr_table <- left_join(extr_table, nfilc.classes, by = "class")
+              
+            }
+            
+            tryCatch(spatial_set[spatial_set$SiteCode == j, "nfilc_class"] <- nfilc.classes$name[nfilc.classes$class == terra::extract(scanfi, tmp, fun = unique)[,"SCANFI_att_nfiLandCover_SW_2020_v1.2"]],
+                     warning = function(w) {
+                       
+                       if(conditionMessage(w) == "longer object length is not a multiple of shorter object length") {
+                         
+                         warning(paste0("Site ", j, " touches multiple cells. nc_covariates returned `", suppressWarnings(nfilc.classes$name[nfilc.classes$class == terra::extract(scanfi, tmp, fun = unique)[,"SCANFI_att_nfiLandCover_SW_2020_v1.2"]]), "` but possible values were `", str_flatten(extr_table$name, collapse = "`, `"), "`. Please examine to choose desired output and replace if necessary."))
+                         
+                       } else {
+                         
+                         warning(conditionMessage(w))
+                         
+                       }
+                       
+                     })
+          }
+        }
+        
+      } else {
+        
+        for(j in unique(spatial_set$SiteCode)) {
+          
+          tmp <- spatial_set %>%
+            filter(SiteCode == j) %>%
+            select(SiteCode, geometry) %>%
+            distinct() %>%
+            st_transform(st_crs(scanfi))
+
+          if(buffer == TRUE) {
+              
+            spatial_set[spatial_set$SiteCode == j, paste0("scanfi_", i)] <- exact_extract(x = scanfi, 
+                                                                       y = tmp, 
+                                                                       fun = "mean")
+              
+            } else {
+              
+              spatial_set[spatial_set$SiteCode == j, paste0("scanfi_", i)] <- terra::extract(x = scanfi, 
+                                                                                             y = tmp, 
+                                                                                             fun = "mean", na.rm = TRUE)[,2]
+              
+            }
+            
+            
+          }
+          
+        }        
+      
+    }
+    
+    if(retain == FALSE) {
+      
+      message(paste0("SCANFI extraction complete. Removing files."))
+      
+      file.remove(list.files(ifelse(is.na(dl_path), "./scanfi", paste0(dl_path, "/scanfi")), full.names = T))
+      
+    }
+    
+  }
+  
   data <- left_join(data, spatial_set %>% st_drop_geometry(), by = c("SiteCode", "survey_year", "survey_month", "survey_day"))
   
   return(data)
   
 }
 
-out <- nc_covariates(land.dat, data_type = "df", covariates = c("worldclim_tavg", "worldclim_prec"), buffer = TRUE, buffer_radius = 500, buffer_units = "m",
+out <- nc_covariates(land.dat, data_type = "df", covariates = c("scanfi_douglasfir", "scanfi_closure"), buffer = TRUE, buffer_radius = 500, buffer_units = "m",
                      ed_login = ed_login, ed_password = ed_pw, retain = TRUE)
