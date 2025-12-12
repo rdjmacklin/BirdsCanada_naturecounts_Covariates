@@ -10,15 +10,25 @@
 
 ## Setup
 
-ed_login <- readline(prompt = "Enter EarthData username: ")
+ed_email <- readline(prompt = "Enter EarthData email: ")
+
+ed_username <- readline(prompt = "Enter EarthData username (not email): ")
 
 ed_pw <- readline(prompt = "Enter EarthData password: ")
+
+nc_username <- readline(prompt = "Enter NatureCounts username (not email): ")
 
 # Load necessary packages
 
 if(system.file(package = "librarian") == "") {
   
   install.packages("librarian")
+  
+}
+
+if(system.file(package = "remotes") == "") {
+  
+  install.packages("remotes")
   
 }
 
@@ -30,8 +40,11 @@ if(system.file(package = "naturecounts") == "") {
   
 }
 
+
+remotes::install_github("bluegreen-labs/appeears", build_vignettes = TRUE)
+
 librarian::shelf(naturecounts, tidyverse, sf, "USEPA/elevatr", terra, exactextractr, geodata,
-                 biooracler, "rspatial/luna", landscapemetrics, measurements)
+                 biooracler, "rspatial/luna", landscapemetrics, measurements, appeears)
 
 ## Load NatureCounts data
 
@@ -39,7 +52,7 @@ librarian::shelf(naturecounts, tidyverse, sf, "USEPA/elevatr", terra, exactextra
 
 if(!file.exists("./Data/Raw/bcmmp.csv")) {
   
-  land.dat <- nc_data_dl(username = "rdjmacklin", request_id = 255574)
+  land.dat <- nc_data_dl(username = nc_username, request_id = 255574)
   
   write_csv(land.dat, "./Data/Raw/bcmmp.csv")
   
@@ -53,7 +66,7 @@ if(!file.exists("./Data/Raw/bcmmp.csv")) {
 
 if(!file.exists("./Data/Raw/bccws.csv")) {
   
-  ocean.dat <- nc_data_dl(username = "rdjmacklin", request_id = 258864) %>%
+  ocean.dat <- nc_data_dl(username = nc_username, request_id = 258864) %>%
     filter(survey_year %in% c(2021:2025))
   
   write_csv(ocean.dat, "./Data/Raw/bccws.csv")
@@ -70,13 +83,13 @@ if(!file.exists("./Data/Raw/bccws.csv")) {
 
 nc_covariate_table <- function() {
   
-  cov.table <- data.frame(covariate_name = c("modis_lctype1", "modis_lctype2", "modis_lctype3", "modis_lctype4", "modis_lctype5", "modis_snow", "modis_ndvi", "modis_evi", "elevation", "worldclim_tavg", "worldclim_tmax", "worldclim_tmin", "worldclim_prec", "worldclim_srad", "worldclim_wind", "worldclim_vapr", "scanfi_biomass", "scanfi_closure", "scanfi_height", "scanfi_nfilc", "scanfi_balsamfir", "scanfi_blackspruce", "scanfi_douglasfir", "scanfi_jackpine", "scanfi_lodgepolepine", "scanfi_ponderosapine", "scanfi_tamarack", "scanfi_whiteredpine", "scanfi_broadleaf", "scanfi_otherconifer"),
-                          covariate_source = c("MODIS Land Cover - IGBP global vegetation classification scheme", "MODIS Land Cover - University of Maryland (UMD) scheme", "MODIS Land Cover - MODIS-derived LAI/fPAR scheme", "MODIS Land Cover - MODIS-derived Net Primary Production scheme", "MODIS Land Cover - Plant Functional Type (PFT) scheme", "MODIS Snow Cover", "MODIS Vegetation Indices - Normalized Difference Vegetation Index", "MODIS Vegetation Indices - Enhanced Vegetation Index", "AWS Terrain Tiles Elevation (m)", "WorldClim - Monthly Average Temperature (degC), 1970-2000", "WorldClim - Monthly Maximum Temperature (degC), 1970-2000", "WorldClim - Monthly Minimum Temperature (degC), 1970-2000", "WorldClim - Monthly Precipitation (mm), 1970-2000", "WorldClim - Monthly Solar Radiation (kJ/m^2/day), 1970-2000", "WorldClim - Monthly Average Wind Speed (m/s), 1970-2000", "WorldClim - Monthly Average Water Vapor Pressure (kPa), 1970-2000", "SCANFI - Biomass (tons/ha)", "SCANFI - Crown closure (% covered by tree canopy)", "SCANFI - Height (m)", "SCANFI - NFI land cover class", "SCANFI - Balsam Fir cover proportion of total crown cover", "SCANFI - Black Spruce cover proportion of total crown cover", "SCANFI - Douglas Fir cover proportion of total crown cover", "SCANFI - Jack Pine cover proportion of total crown cover", "SCANFI - Lodgepole Pine cover proportion of total crown cover", "SCANFI - Ponderosa Pine cover proportion of total crown cover", "SCANFI - Tamarack cover proportion of total crown cover", "SCANFI - White and Red Pine cover proportion of total crown cover", "SCANFI - Broadleaf tree species cover proportion of total crown cover", "SCANFI - Other Conifer Species cover proportion of total crown cover"),
-                          covariate_source_specific = c(rep("MCD12Q1", times = 5), "MOD10A1", rep("MOD13A1", times = 2), NA, rep("WorldClim Ver. 2.1", times = 7), rep("SCANFI Ver 1.2", times = 14)),
-                          temporal_resolution = c(rep("Annual", times = 5), "Daily", rep("16-Day", times = 2), rep("Static", times = 22)),
-                          spatial_resolution = c(rep("500 m", times = 8), "~600-800m", rep("~1 km^2", times = 7), rep("30 m", times = 14)),
-                          via = c(rep("luna", times = 8), "elevatr", rep("geodata", times = 7), rep("Direct Download", times = 14)),
-                          documentation = c(rep("http://doi.org/10.5067/MODIS/MCD12Q1.006", times = 5), "http://doi.org/10.5067/MODIS/MOD10A1.061", rep("https://doi.org/10.5067/MODIS/MOD13A1.061", times = 2), "https://github.com/USEPA/elevatr", rep("https://worldclim.org/data/worldclim21.html", times = 7), rep("https://doi.org/10.23687/18e6a919-53fd-41ce-b4e2-44a9707c52dc", times = 14)))
+  cov.table <- data.frame(covariate_name = c("modis_lctype1", "modis_lctype2", "modis_lctype3", "modis_lctype4", "modis_lctype5", "modis_snow", "modis_ndvi", "modis_evi", "elevation", "worldclim_tavg", "worldclim_tmax", "worldclim_tmin", "worldclim_prec", "worldclim_srad", "worldclim_wind", "worldclim_vapr", "scanfi_biomass", "scanfi_closure", "scanfi_height", "scanfi_nfilc", "scanfi_balsamfir", "scanfi_blackspruce", "scanfi_douglasfir", "scanfi_jackpine", "scanfi_lodgepolepine", "scanfi_ponderosapine", "scanfi_tamarack", "scanfi_whiteredpine", "scanfi_broadleaf", "scanfi_otherconifer", "daymet_dayl", "daymet_prcp", "dayment_srad", "daymet_swe", "daymet_tmax", "daymet_tmin", "daymet_vp"),
+                          covariate_source = c("MODIS Land Cover - IGBP global vegetation classification scheme", "MODIS Land Cover - University of Maryland (UMD) scheme", "MODIS Land Cover - MODIS-derived LAI/fPAR scheme", "MODIS Land Cover - MODIS-derived Net Primary Production scheme", "MODIS Land Cover - Plant Functional Type (PFT) scheme", "MODIS Snow Cover", "MODIS Vegetation Indices - Normalized Difference Vegetation Index", "MODIS Vegetation Indices - Enhanced Vegetation Index", "AWS Terrain Tiles Elevation (m)", "WorldClim - Monthly Average Temperature (degC), 1970-2000", "WorldClim - Monthly Maximum Temperature (degC), 1970-2000", "WorldClim - Monthly Minimum Temperature (degC), 1970-2000", "WorldClim - Monthly Precipitation (mm), 1970-2000", "WorldClim - Monthly Solar Radiation (kJ/m^2/day), 1970-2000", "WorldClim - Monthly Average Wind Speed (m/s), 1970-2000", "WorldClim - Monthly Average Water Vapor Pressure (kPa), 1970-2000", "SCANFI - Biomass (tons/ha)", "SCANFI - Crown closure (% covered by tree canopy)", "SCANFI - Height (m)", "SCANFI - NFI land cover class", "SCANFI - Balsam Fir cover proportion of total crown cover", "SCANFI - Black Spruce cover proportion of total crown cover", "SCANFI - Douglas Fir cover proportion of total crown cover", "SCANFI - Jack Pine cover proportion of total crown cover", "SCANFI - Lodgepole Pine cover proportion of total crown cover", "SCANFI - Ponderosa Pine cover proportion of total crown cover", "SCANFI - Tamarack cover proportion of total crown cover", "SCANFI - White and Red Pine cover proportion of total crown cover", "SCANFI - Broadleaf tree species cover proportion of total crown cover", "SCANFI - Other Conifer Species cover proportion of total crown cover", "Daymet - Daylength (s/day)", "Daymet - Precipitation (mm/day)", "Daymet - Shortwave radiation (W/m^2)", "Daymet - Snow water equivalent (kg/m^2)", "Daymet - Maximum air temperature (degrees C)", "Daymet - Minimum air temperature (degrees C)", "Daymet - Water vapor pressure (Pa)"),
+                          covariate_source_specific = c(rep("MCD12Q1", times = 5), "MOD10A1", rep("MOD13A1", times = 2), NA, rep("WorldClim Ver. 2.1", times = 7), rep("SCANFI Ver. 1.2", times = 14), rep("DAYMET Ver. 004", times = 7)),
+                          temporal_resolution = c(rep("Annual", times = 5), "Daily", rep("16-Day", times = 2), rep("Static", times = 22), rep("Daily", times = 7)),
+                          spatial_resolution = c(rep("500 m", times = 8), "~600-800m", rep("~1 km^2", times = 7), rep("30 m", times = 14), rep("1 km", times = 7)),
+                          via = c(rep("luna", times = 8), "elevatr", rep("geodata", times = 7), rep("Direct Download", times = 14), rep("appeears", times = 7)),
+                          documentation = c(rep("http://doi.org/10.5067/MODIS/MCD12Q1.006", times = 5), "http://doi.org/10.5067/MODIS/MOD10A1.061", rep("https://doi.org/10.5067/MODIS/MOD13A1.061", times = 2), "https://github.com/USEPA/elevatr", rep("https://worldclim.org/data/worldclim21.html", times = 7), rep("https://doi.org/10.23687/18e6a919-53fd-41ce-b4e2-44a9707c52dc", times = 14), rep("https://doi.org/10.3334/ORNLDAAC/1840", times = 7)))
   
   return(cov.table)
   
@@ -87,8 +100,8 @@ cov.table <- nc_covariate_table()
 
 nc_covariates <- function(data, data_type = "df", covariates = "none", buffer = TRUE,
                           buffer_radius = NA, buffer_units = NA, latitude_col = "latitude",
-                          longitude_col = "longitude", ed_login = NA, ed_password = NA,
-                          dl_path = NA, retain = TRUE) {
+                          longitude_col = "longitude", ed_email = NA, ed_username = NA,
+                          ed_password = NA, dl_path = NA, appeears_transfer = FALSE, retain = TRUE) {
   
   # First section: data integrity checks
   
@@ -270,7 +283,7 @@ nc_covariates <- function(data, data_type = "df", covariates = "none", buffer = 
   
   study_area <- st_bbox(spatial_set) %>%
     st_as_sfc() %>%
-    st_buffer(ifelse(buffer == TRUE, 2*conv_unit(x = buffer_radius, from = buffer_units, to = "m"), 1000)) %>%
+    st_buffer(20000) %>%
     vect()
   
   # Extraction steps: landcover requested.
@@ -279,9 +292,9 @@ nc_covariates <- function(data, data_type = "df", covariates = "none", buffer = 
     
     ########### ADD CHECK THAT DATA PROVIDED IS WITHIN THE AVAILABLE MODIS DATA WINDOW
 
-    if(is.na(ed_login) | is.na(ed_password)) {
+    if(is.na(ed_email) | is.na(ed_password)) {
       
-      stop("MODIS data requested but Earthdata system login information not supplied. Please register at https://urs.earthdata.nasa.gov/users/new and supply using ed_login and ed_password parameters.")
+      stop("MODIS data requested but Earthdata system login information not supplied. Please register at https://urs.earthdata.nasa.gov/users/new and supply using ed_email and ed_password parameters.")
       
     }
     
@@ -306,7 +319,7 @@ nc_covariates <- function(data, data_type = "df", covariates = "none", buffer = 
                                  download=TRUE,
                                  overwrite=FALSE,
                                  path=ifelse(is.na(dl_path), "./modis/MCD12Q1", paste0(dl_path, "/modis/MCD12Q1")),
-                                 username=ed_login,
+                                 username=ed_email,
                                  password=ed_password)
     
     modis.files <- modisDate(modis.files)
@@ -488,9 +501,9 @@ nc_covariates <- function(data, data_type = "df", covariates = "none", buffer = 
   # if("modis_snow" %in% covariates) {
   #   
   #   
-  #   if(is.na(ed_login) | is.na(ed_password)) {
+  #   if(is.na(ed_email) | is.na(ed_password)) {
   #     
-  #     stop("MODIS data requested but Earthdata system login information not supplied. Please register at https://urs.earthdata.nasa.gov/users/new and supply using ed_login and ed_password parameters.")
+  #     stop("MODIS data requested but Earthdata system login information not supplied. Please register at https://urs.earthdata.nasa.gov/users/new and supply using ed_email and ed_password parameters.")
   #     
   #   }
   #   
@@ -516,7 +529,7 @@ nc_covariates <- function(data, data_type = "df", covariates = "none", buffer = 
   #                                overwrite=FALSE,
   #                                server = "NSIDC_CPRD",
   #                                path=ifelse(is.na(dl_path), "./modis", paste0(dl_path, "/modis")),
-  #                                username=ed_login,
+  #                                username=ed_email,
   #                                password=ed_password)
   #   
   #   return(modis.files)
@@ -527,9 +540,9 @@ nc_covariates <- function(data, data_type = "df", covariates = "none", buffer = 
   
   if("modis_ndvi" %in% covariates | "modis_evi" %in% covariates) {
     
-    if(is.na(ed_login) | is.na(ed_password)) {
+    if(is.na(ed_email) | is.na(ed_password)) {
       
-      stop("MODIS data requested but Earthdata system login information not supplied. Please register at https://urs.earthdata.nasa.gov/users/new and supply using ed_login and ed_password parameters.")
+      stop("MODIS data requested but Earthdata system login information not supplied. Please register at https://urs.earthdata.nasa.gov/users/new and supply using ed_email and ed_password parameters.")
       
     }
     
@@ -558,7 +571,7 @@ nc_covariates <- function(data, data_type = "df", covariates = "none", buffer = 
                                                                                  download=i,
                                                                                  overwrite=FALSE,
                                                                                  path=ifelse(is.na(dl_path), "./modis/MOD13A1", paste0(dl_path, "/modis/MCD12Q1")),
-                                                                                 username=ed_login,
+                                                                                 username=ed_email,
                                                                                  password=ed_password)
       
       # Will need a way to generalize month formatting
@@ -572,7 +585,7 @@ nc_covariates <- function(data, data_type = "df", covariates = "none", buffer = 
                                                         download=i,
                                                         overwrite=FALSE,
                                                         path=ifelse(is.na(dl_path), "./modis/MOD13A1", paste0(dl_path, "/modis/MCD12Q1")),
-                                                        username=ed_login,
+                                                        username=ed_email,
                                                         password=ed_password)
         
         
@@ -1076,11 +1089,232 @@ nc_covariates <- function(data, data_type = "df", covariates = "none", buffer = 
     
   }
   
+  # Daymet Data
+  
+  if(length(grep("daymet_", covariates)) > 0) {
+    
+    if(is.na(dl_path) & !dir.exists("./daymet")) {
+      
+      dir.create("./daymet", recursive = T)
+      
+    }
+    
+    if(!is.na(dl_path) & !dir.exists(paste0(dl_path, "/daymet"))) {
+      
+      dir.create(paste0(dl_path, "/daymet"), recursive = T)
+      
+    }
+    
+    options(keyring_backend = "file")
+    
+    rs_set_key(user = ed_username, password = ed_password)
+    
+    token <- rs_login(user = ed_username)
+    
+    daymet.vars <- gsub(pattern = "daymet_", replacement = "", grep("daymet_", covariates, value = T))
+    
+    if(appeears_transfer == FALSE) {
+      
+      tasks <- list()
+      
+      for(i in sort(unique(spatial_set$survey_year))) {
+        
+        tasks[[as.character(i)]] <- data.frame(
+          task = "polygon",
+          subtask = "subtask",
+          latitude = mean(st_coordinates(spatial_set %>% st_transform(4326))[,"Y"]),
+          longitude = mean(st_coordinates(spatial_set %>% st_transform(4326))[,"X"]),
+          start = paste0(i, "-", ifelse(nchar(min(spatial_set$survey_month[spatial_set$survey_year == i])) == 1, paste0(0, min(spatial_set$survey_month[spatial_set$survey_year == i])), min(spatial_set$survey_month[spatial_set$survey_year == i])), "-", ifelse(nchar(min(spatial_set$survey_day[spatial_set$survey_month == min(spatial_set$survey_month[spatial_set$survey_year == i]) & spatial_set$survey_year == i])) == 1, paste0(0, min(spatial_set$survey_day[spatial_set$survey_month == min(spatial_set$survey_month[spatial_set$survey_year == i]) & spatial_set$survey_year == i])), min(spatial_set$survey_day[spatial_set$survey_month == min(spatial_set$survey_month[spatial_set$survey_year == i]) & spatial_set$survey_year == i]))),
+          end = paste0(i, "-", ifelse(nchar(max(spatial_set$survey_month[spatial_set$survey_year == i])) == 1, paste0(0, max(spatial_set$survey_month[spatial_set$survey_year == i])), max(spatial_set$survey_month[spatial_set$survey_year == i])), "-", ifelse(nchar(max(spatial_set$survey_day[spatial_set$survey_month == max(spatial_set$survey_month[spatial_set$survey_year == i]) & spatial_set$survey_year == i])) == 1, paste0(0, max(spatial_set$survey_day[spatial_set$survey_month == max(spatial_set$survey_month[spatial_set$survey_year == i]) & spatial_set$survey_year == i])), max(spatial_set$survey_day[spatial_set$survey_month == max(spatial_set$survey_month[spatial_set$survey_year == i]) & spatial_set$survey_year == i]))),
+          product = "DAYMET.004",
+          layer = daymet.vars
+        )
+        
+      }
+      
+      for(i in sort(unique(spatial_set$survey_year))) {
+        
+        task <- rs_build_task(df = tasks[[as.character(i)]],
+                              roi = st_as_sf(study_area),
+                              format = "geotiff")
+        
+        rs_request(
+          request = task,
+          user = ed_username,
+          transfer = FALSE,
+          verbose = TRUE
+        )
+        
+      }
+      
+      task_ids <- list()
+      
+      tasklist <- rs_list_task(user = ed_username)
+      
+      for(i in sort(unique(spatial_set$survey_year), decreasing = TRUE)) {
+        
+        task_ids[[as.character(i)]] <- tasklist[which(sort(unique(spatial_set$survey_year), decreasing = TRUE) == i), "task_id"]
+        
+      }
+      
+      saveRDS(task_ids, file = ifelse(is.na(dl_path), "./daymet/appeears_reqs.RDS", paste0(dl_path, "/daymet/appeears_reqs.RDS")))
+      
+      assign("appeears_reqs", task_ids, envir = .GlobalEnv)
+      
+      rs_logout(token)
+      
+      return(cat("Requests have been placed with appeears for the data you've requested. Look to your email for confirmation that these have been completed. We have saved the request data in an external object at ", ifelse(is.na(dl_path), "./daymet/appeears_reqs.RDS", paste0(dl_path, "/daymet/appeears_reqs.RDS")), ". Please rerun your call to nc_covariates with parameter 'appeears_transfer' set to TRUE once you have received confirmation that these requests are approved at your EarthData email."))
+    
+    } else {
+      
+      if(file.exists(ifelse(is.na(dl_path), "./daymet/appeears_reqs.RDS", paste0(dl_path, "/daymet/appeears_reqs.RDS")))) {
+        
+        appeears <- readRDS(ifelse(is.na(dl_path), "./daymet/appeears_reqs.RDS", paste0(dl_path, "/daymet/appeears_reqs.RDS")))
+        
+      } else {
+        
+        stop(paste0("Cannot find fie appeears_req.RDS at ", ifelse(is.na(dl_path), "./daymet/appeears_reqs.RDS", paste0(dl_path, "/daymet/appeears_reqs.RDS")), ". Have you submitted an initial request with appeears_transfer = FALSE? Have you moved the file?"))
+        
+      }
+      
+      
+      for(i in sort(unique(spatial_set$survey_year))) {
+        
+        if(!dir.exists(ifelse(is.na(dl_path), paste0("./daymet/", appeears[[as.character(i)]]), paste0(dl_path, "/daymet/", appeears[[as.character(i)]])))) {
+          
+          dir.create(ifelse(is.na(dl_path), paste0("./daymet/", appeears[[as.character(i)]]), paste0(dl_path, "/daymet/", appeears[[as.character(i)]])))
+          
+          message(paste0("Downloading Daymet data for ", i))
+          
+          rs_transfer(task_id = appeears[[as.character(i)]], 
+                      user = ed_username,
+                      path = ifelse(is.na(dl_path), paste0("./daymet/", appeears[[as.character(i)]]), paste0(dl_path, "/daymet/", appeears[[as.character(i)]])))
+          
+          message(paste0("Daymet data for ", i, " downloaded."))
+          
+        }
+      }
+      
+      daymet.stats <- list()
+      
+      all.dates <- c()
+      
+      for(i in sort(unique(spatial_set$survey_year))) {
+        
+        if(file.exists(ifelse(is.na(dl_path), paste0("./daymet/", appeears[[as.character(i)]], "/DAYMET-004-Statistics.csv"), paste0(dl_path, "/daymet/", appeears[[as.character(i)]], "/DAYMET-004-Statistics.csv")))) {
+          
+          daymet.stats[[as.character(i)]] <- read_csv(ifelse(is.na(dl_path), paste0("./daymet/", appeears[[as.character(i)]], "/DAYMET-004-Statistics.csv"), paste0(dl_path, "/daymet/", appeears[[as.character(i)]], "/DAYMET-004-Statistics.csv")))
+          
+          all.dates <- c(all.dates, unique(daymet.stats[[as.character(i)]]$Date))
+          
+        }
+      
+      }
+      
+      all.dates <- as.Date(all.dates)
+      
+      spatial_set$date <- as.Date(paste0(spatial_set$survey_year, "-", spatial_set$survey_month, "-", spatial_set$survey_day))
+      
+      if(TRUE %in% unique(unique(spatial_set$date) > max(all.dates))) {
+        
+        latest.date <- max(spatial_set$date[spatial_set$date %in% all.dates])
+        
+        message(paste0("Daymet data is not available for some dates. The latest date in your data with available Daymet data is ", max(spatial_set$date[spatial_set$date %in% all.dates]), ". NA will be returned for dates beyond this point."))
+        
+      }
+      
+      dates <- sort(unique(spatial_set$date[spatial_set$date %in% all.dates]))
+      
+      for(i in daymet.vars) {
+        
+        for(j in dates) {
+          
+          pts_to_fill <- filter(spatial_set, date == j)
+          
+          j.date <- as.Date(j)
+          
+          filename <- gsub(pattern = "DAYMET_", replacement = "DAYMET.", daymet.stats[[as.character(year(j.date))]]$`File Name`[daymet.stats[[as.character(year(j.date))]]$Date == j.date & daymet.stats[[as.character(year(j.date))]]$Dataset == i])
+          
+          daymet <- rast(ifelse(is.na(dl_path), paste0("./daymet/", appeears[[as.character(year(j.date))]], "/", filename, ".tif"), paste0(dl_path, "/daymet/", appeears[[as.character(year(j.date))]], "/", filename, ".tif")))
+          
+          for(k in unique(pts_to_fill$SiteCode)) {
+            
+            tmp <- pts_to_fill %>%
+              filter(SiteCode == k) %>%
+              select(SiteCode, geometry) %>%
+              distinct() %>%
+              st_transform(st_crs(daymet))
+            
+            if(buffer == TRUE) {
+              
+              spatial_set[spatial_set$SiteCode == k & spatial_set$date == j.date, i] <- exact_extract(x = daymet, 
+                                                                                                      y = tmp, 
+                                                                                                      fun = "mean")
+              
+            } else {
+                
+              spatial_set[spatial_set$SiteCode == k & spatial_set$date == j.date, i] <- terra::extract(x = daymet, 
+                                                                                                       y = tmp, 
+                                                                                                       fun = "mean", na.rm = TRUE)[,2]
+              
+            }
+            
+          }
+          
+          message(paste0("Daymet [", i, "]: Date ", which(dates == j), " of ", length(dates)))  
+            
+        }
+        
+        if(TRUE %in% is.na(spatial_set[spatial_set$date <= latest.date, i])) {
+          
+          warning(paste0("Daymet [", i, "]: some points are close to shore, and so fall outside of raster coverage. For these cells, the nearest cell value will be used. Repairing now."))
+          
+          for(j in dates[date < latest.date]) {
+            
+            sites_to_fill <- unique(spatial_set$SiteCode[is.na(spatial_set[, i]) & spatial_set$date == j])
+              
+            if(nrow(sites_to_fill) > 0) {
+                
+              j.date <- as.Date(j)
+                
+              filename <- gsub(pattern = "DAYMET_", replacement = "DAYMET.", daymet.stats[[as.character(year(j.date))]]$`File Name`[daymet.stats[[as.character(year(j.date))]]$Date == j.date & daymet.stats[[as.character(year(j.date))]]$Dataset == i])
+                
+              daymet <- rast(ifelse(is.na(dl_path), paste0("./daymet/", appeears[[as.character(year(j.date))]], "/", filename, ".tif"), paste0(dl_path, "/daymet/", appeears[[as.character(year(j.date))]], "/", filename, ".tif")))
+                
+              for(k in sites_to_fill) {
+                  
+                tmp <- spatial_set %>%
+                  filter(SiteCode == k) %>%
+                  select(SiteCode, geometry) %>%
+                  distinct() %>%
+                  st_buffer(2500) %>%
+                  st_transform(crs(daymet))
+                  
+                daymet_crop <- crop(daymet, vect(tmp)) %>%
+                  as.points()
+                  
+                near.pt <- nearest(vect(tmp), daymet_crop)$to_id
+                  
+                spatial_set[spatial_set$SiteCode == k & spatial_set$date == j, i] <- mean(values(daymet_crop[near.pt])[,filename])
+                  
+                
+              }
+              }
+            }
+            }
+          }
+            
+    }
+    
+    spatial_set <- select(spatial_set, -date)
+          
+    }
+  
   data <- left_join(data, spatial_set %>% st_drop_geometry(), by = c("SiteCode", "survey_year", "survey_month", "survey_day"))
   
   return(data)
   
 }
 
-out <- nc_covariates(land.dat, data_type = "df", covariates = c("scanfi_douglasfir", "scanfi_closure"), buffer = TRUE, buffer_radius = 500, buffer_units = "m",
-                     ed_login = ed_login, ed_password = ed_pw, retain = TRUE)
+out <- nc_covariates(land.dat, data_type = "df", covariates = c("daymet_dayl", "daymet_prcp"), buffer = FALSE,
+                     ed_email = ed_email, ed_username = ed_username, ed_password = ed_pw, appeears_transfer = TRUE, retain = TRUE)
