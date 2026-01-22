@@ -33,17 +33,13 @@ ed_email <- readline(prompt = "Enter EarthData email: ")
 
 modis_files <- landcover_download(
   landcover_data,
-  ed_email = ed_email,
-  site_name = "sites",
-  date_year = "yr"
+  ed_email = ed_email
 )
 
 landcover_data <- landcover_extract(
   landcover_data,
   landcover_files = modis_files,
-  covariates = "modis_lctype1",
-  site_name = "sites",
-  date_year = "yr"
+  covariates = "modis_lctype1"
 )
 
 # Demonstrate what happens when a site is out of range
@@ -59,7 +55,7 @@ outofrange_data <- data_buff(outofrange_data, buffer = TRUE)
 outofrange_data <- landcover_extract(
   outofrange_data,
   modis_files = modis_files,
-  covariates = "modis_lctype1"
+  covariates = c("modis_lctype1", "modis_lctype2")
 )
 
 # Tidy up
@@ -85,27 +81,15 @@ vegetation_data <- data_buff(vegetation_data, buffer = TRUE)
 
 ed_email <- readline(prompt = "Enter EarthData email: ")
 
-ed_pw <- readline(prompt = "Enter EarthData password: ")
-
 vegetation_files <- vegetation_download(
-  landcover_data,
-  covariates = "modis_evi",
-  ed_email = ed_email,
-  ed_password = ed_pw,
-  site_name = "sites",
-  date_year = "yr",
-  date_month = "mth",
-  date_day = "dy"
+  vegetation_data,
+  ed_email = ed_email
 )
 
 vegetation_data <- vegetation_extract(
-  landcover_data,
+  vegetation_data,
   vegetation_files = vegetation_files,
-  covariates = "modis_evi",
-  site_name = "sites",
-  date_year = "yr",
-  date_month = "mth",
-  date_day = "dy"
+  covariates = "modis_evi"
 )
 
 # Demonstrate what happens when a site is out of range
@@ -143,12 +127,11 @@ elevation_data <- data_fmt(data)
 
 elevation_data <- data_buff(elevation_data, buffer = FALSE)
 
-elevation_rasts <- elevation_download(elevation_data, covariates = "elevation")
+elevation_rasts <- elevation_download(elevation_data)
 
 elevation_data <- elevation_extract(
   elevation_data,
-  elevation_data = elevation_rasts,
-  covariates = "elevation"
+  elevation_data = elevation_rasts
 )
 
 # Demonstrate what happens when a site is out of range
@@ -163,8 +146,7 @@ outofrange_data <- data_buff(outofrange_data, buffer = TRUE)
 
 outofrange_data <- elevation_extract(
   outofrange_data,
-  elevation_data = elevation_rasts,
-  covariates = "elevation"
+  elevation_data = elevation_rasts
 )
 
 # Tidy up
@@ -187,8 +169,7 @@ worldclim_data <- data_fmt(data)
 worldclim_data <- data_buff(worldclim_data, buffer = FALSE)
 
 worldclim_rasts <- worldclim_download(
-  covariates = "worldclim_prec",
-  countries = "Canada"
+  covariates = "worldclim_prec"
 )
 
 worldclim_data <- worldclim_extract(
@@ -232,7 +213,7 @@ scanfi_data <- data_fmt(data)
 
 scanfi_data <- data_buff(scanfi_data, buffer = TRUE)
 
-scanfi_rasts <- scanfi_download(covariates = "scanfi_nfilc")
+scanfi_rasts <- scanfi_download(covariates = "scanfi_height")
 
 scanfi_rasts <- scanfi_read(
   covariates = "scanfi_height",
@@ -284,20 +265,23 @@ daymet_data <- data_buff(daymet_data, buffer = TRUE)
 
 ed_username <- readline(prompt = "Enter EarthData username: ")
 
-ed_pw <- readline(prompt = "Enter EarthData password: ")
-
 daymet_download(
   daymet_data,
   covariates = "daymet_prcp",
   ed_username = ed_username,
-  ed_password = ed_pw
 )
 
 daymet_reqs <- daymet_download(
   daymet_data,
   covariates = "daymet_prcp",
   ed_username = ed_username,
-  ed_password = ed_pw,
+  daymet_transfer = FALSE
+)
+
+daymet_reqs <- daymet_download(
+  daymet_data,
+  covariates = "daymet_prcp",
+  ed_username = ed_username,
   daymet_transfer = TRUE
 )
 
@@ -372,8 +356,6 @@ ed_email <- readline(prompt = "Enter EarthData email: ")
 
 ed_username <- readline(prompt = "Enter EarthData username: ")
 
-ed_pw <- readline(prompt = "Enter EarthData password: ")
-
 output_df <- nc_covariates(
   data,
   covariates = c("daymet_dayl"),
@@ -384,7 +366,6 @@ output_df <- nc_covariates(
   coord_lon = "lon",
   ed_email = ed_email,
   ed_username = ed_username,
-  ed_password = ed_pw,
   retain = TRUE,
   merge = TRUE
 )
@@ -399,7 +380,7 @@ output_df <- nc_covariates(
   coord_lon = "lon",
   ed_email = ed_email,
   ed_username = ed_username,
-  ed_password = ed_pw,
+  daymet_transfer = TRUE,
   retain = TRUE,
   merge = TRUE
 )
@@ -412,7 +393,6 @@ output_sf <- nc_covariates(
   date_ordinal = "ordinal",
   date_year = "yr",
   ed_email = ed_email,
-  ed_password = ed_pw,
   retain = TRUE)
 
 output_terra <- nc_covariates(
@@ -427,24 +407,3 @@ output_terra <- nc_covariates(
   retain = TRUE,
   merge = FALSE
 )
-
-elev_data <- data_fmt(data,
-                    site_name = "sites",
-                    date_year = "yr",
-                    date_month = "mth",
-                    date_day = "dy",
-                    coord_lat = "lat",
-                    coord_lon = "lon") %>%
-  data_buff(buffer = TRUE) %>%
-  elevation_download()
-
-elev_output <- data_fmt(data,
-                        site_name = "sites",
-                        date_year = "yr",
-                        date_month = "mth",
-                        date_day = "dy",
-                        coord_lat = "lat",
-                        coord_lon = "lon") %>%
-  data_buff(buffer = TRUE) %>%
-  elevation_extract(elevation_data = elev_data) %>%
-  nc_covariates_merge(original_data = data)
