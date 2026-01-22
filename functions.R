@@ -14,28 +14,15 @@ if (system.file(package = "remotes") == "") {
   install.packages("remotes")
 }
 
-if (system.file(package = "naturecounts") == "") {
-  install.packages(
-    "naturecounts",
-    repos = c(
-      birdscanada = 'https://birdscanada.r-universe.dev',
-      CRAN = 'https://cloud.r-project.org'
-    )
-  )
-}
-
-
 remotes::install_github("bluegreen-labs/appeears", build_vignettes = TRUE)
 
 librarian::shelf(
-  naturecounts,
   tidyverse,
   sf,
   "USEPA/elevatr",
   terra,
   exactextractr,
   geodata,
-  biooracler,
   "rspatial/luna",
   landscapemetrics,
   measurements,
@@ -44,6 +31,8 @@ librarian::shelf(
 
 
 ###################### PREEXISTING NATURECOUNTS FUNCTIONS ######################
+
+# Function to check ordinal dates.
 
 doy_check <- function(s) {
   stp <- FALSE
@@ -71,103 +60,7 @@ doy_check <- function(s) {
   s
 }
 
-dom_check <- function(d) {
-  stp <- FALSE
-
-  if (stringr::str_detect(d, "^[:digit:]+$")) {
-    d <- as.numeric(d)
-  }
-  if (is.numeric(d)) {
-    if (d < 1 | d > 31) {
-      stp <- TRUE
-    }
-    if (round(d) != d) stp <- TRUE
-  } else {
-    d <- suppressWarnings(lubridate::ymd_hms(d, truncated = 4)) %>%
-      lubridate::day()
-    if (is.na(d)) stp <- TRUE
-  }
-  if (stp) {
-    stop(
-      "Day of month must be a number between 1 and 31. ",
-      "If referring to an ordinal date (day of year), reformat with data_fmt() and the 'date_ordinal' argument.",
-      call. = FALSE
-    )
-  }
-  d
-}
-
-month_check <- function(m) {
-  stp <- FALSE
-
-  if (stringr::str_detect(m, "^[:digit:]+$")) {
-    m <- as.numeric(m)
-  }
-  if (is.numeric(m)) {
-    if (m < 1 | m > 12) {
-      stp <- TRUE
-    }
-    if (round(m) != m) stp <- TRUE
-  } else {
-    months <- data.frame(
-      labels = c(
-        "January",
-        "Jan",
-        "Jan.",
-        "February",
-        "Feb",
-        "Feb.",
-        "March",
-        "Mar",
-        "Mar.",
-        "April",
-        "Apr",
-        "Apr.",
-        "May",
-        "May.",
-        "June",
-        "Jun",
-        "Jun.",
-        "July",
-        "Jul",
-        "Jul.",
-        "August",
-        "Aug",
-        "Aug.",
-        "September",
-        "Sept",
-        "Sept.",
-        "October",
-        "Oct",
-        "Oct.",
-        "November",
-        "Nov",
-        "Nov.",
-        "December",
-        "Dec",
-        "Dec."
-      ),
-      numerics = c(rep(1:4, each = 3), rep(5, times = 2), rep(6:12, each = 3))
-    )
-    if (class(m) == "factor") {
-      m <- as.character(m)
-    }
-    if (tolower(m) %in% tolower(months$labels)) {
-      m <- months$numeric[tolower(months$labels) == tolower(m)]
-    } else {
-      stp <- TRUE
-    }
-    if (is.na(m)) stp <- TRUE
-  }
-  if (stp) {
-    stop(
-      "Month must be either a number (1 = January, ..., 12 = December), ",
-      "or a month name ('January'/'Jan'/'Jan.').",
-      call. = FALSE
-    )
-  }
-  return(m)
-}
+# Function to check if necessary packages are present.
 
 have_pkg_check <- function(pkgs) {
   # TODO: remove suppression when rnaturalearth resolved
@@ -193,6 +86,158 @@ have_pkg_check <- function(pkgs) {
 }
 
 ######################### NEW FORMATTING FUNCTIONS #############################
+
+# Function to check days of month.
+
+dom_check <- function(d) {
+  stp <- FALSE
+
+  if (stringr::str_detect(d, "^[:digit:]+$")) {
+    d <- as.numeric(d)
+  }
+  if (is.numeric(d)) {
+    if (d < 1 | d > 31) {
+      stp <- TRUE
+    }
+    if (round(d) != d) stp <- TRUE
+  } else {
+    d <- suppressWarnings(lubridate::ymd_hms(d, truncated = 4)) %>%
+      lubridate::day()
+    if (is.na(d)) stp <- TRUE
+  }
+  if (stp) {
+    stop(
+      "Day of month must be a number between 1 and 31. ",
+      "If referring to an ordinal date (day of year), reformat with data_fmt()",
+      " and the 'date_ordinal' argument.",
+      call. = FALSE
+    )
+  }
+  d
+}
+
+# Function to check months.
+
+month_check <- function(m) {
+  stp <- FALSE
+
+  # Convert factor months to characters
+  if (class(m) == "factor") {
+    m <- as.character(m)
+  }
+  # Check if numeric values have been given as characters
+  if (stringr::str_detect(m, "^[:digit:]+$")) {
+    m <- as.numeric(m)
+  }
+  # Check numerics are between 1 and 12.
+  if (is.numeric(m)) {
+    if (m < 1 | m > 12) {
+      stp <- TRUE
+    }
+    # Check numerics are whole numbers
+    if (round(m) != m) stp <- TRUE
+  } else {
+    # If month name provided in either English or French, convert it to numeric.
+    months <- data.frame(
+      labels = c(
+        "January",
+        "Janvier",
+        "Jan",
+        "Janv",
+        "Jan.",
+        "Janv.",
+        "February",
+        "Février",
+        "Fevrier",
+        "Feb",
+        "Févr",
+        "Fevr",
+        "Feb.",
+        "Févr.",
+        "Fevr.",
+        "March",
+        "Mars",
+        "Mar",
+        "Mar.",
+        "April",
+        "Avril",
+        "Apr",
+        "Avr",
+        "Apr.",
+        "Avr.",
+        "May",
+        "Mai",
+        "May.",
+        "Mai.",
+        "June",
+        "Juin",
+        "Jun",
+        "Jun.",
+        "Juin.",
+        "July",
+        "Juillet",
+        "Jul",
+        "Juill",
+        "Jul.",
+        "Juill.",
+        "August",
+        "Août",
+        "Aout",
+        "Aug",
+        "Aug.",
+        "Août.",
+        "Aout.",
+        "September",
+        "Septembre",
+        "Sept",
+        "Sept.",
+        "October",
+        "Octobre",
+        "Oct",
+        "Oct.",
+        "November",
+        "Novembre",
+        "Nov",
+        "Nov.",
+        "December",
+        "Décembre",
+        "Decembre",
+        "Dec",
+        "Déc",
+        "Dec.",
+        "Déc."
+      ),
+      numerics = c(
+        rep(1, times = 6),
+        rep(2, times = 9),
+        rep(3, times = 4),
+        rep(4, times = 6),
+        rep(5, times = 4),
+        rep(6, times = 5),
+        rep(7, times = 6),
+        rep(8, times = 7),
+        rep(c(9, 10, 11), each = 4),
+        rep(12, times = 7)
+      )
+    )
+    if (tolower(m) %in% tolower(months$labels)) {
+      m <- months$numeric[tolower(months$labels) == tolower(m)]
+    } else {
+      # Stop if a non-month label character has been provided.
+      stp <- TRUE
+    }
+    # Stop if missing values are present.
+    if (is.na(m)) stp <- TRUE
+  }
+  if (stp) {
+    stop(
+      "Month must be either a number (1 = January, ..., 12 = December), ",
+      "or a month name ('January'/'Jan'/'Jan.').",
+      call. = FALSE
+    )
+  }
+  return(m)
+}
 
 # New data table for sources of covariate data.
 
@@ -307,7 +352,7 @@ nc_covariate_table <- function() {
       rep("appeears", times = 7)
     ),
     documentation = c(
-      rep("http://doi.org/10.5067/MODIS/MCD12Q1.006", times = 5),
+      rep("https://doi.org/10.5067/MODIS/MCD12Q1.061", times = 5),
       "http://doi.org/10.5067/MODIS/MOD10A1.061",
       rep("https://doi.org/10.5067/MODIS/MOD13A1.061", times = 2),
       "https://github.com/USEPA/elevatr",
@@ -328,52 +373,74 @@ nc_covariate_table <- function() {
 
 covariate_fmt_check <- function(data) {
   # Check packages
-
   have_pkg_check(c("sf", "terra"))
 
+  # Check if input is a simple features object.
   if ("sf" %in% class(data)) {
+    # Store data type.
     data_type <- "sf"
 
+    # Store data geometry.
     data_geometry <- as.character(sf::st_geometry_type(
       data,
       by_geometry = FALSE
     ))
 
+    # Handle objects containing mixtures of multiple geometry types.
     if (data_geometry == "GEOMETRY") {
       stop(
-        "[Data Formatting] mixed sf geometries detected. Please provide a set of only POINT geometries or only POLYGON geometries.",
+        "[Data Formatting] mixed sf geometries detected. Please provide a set of",
+        " only POINT geometries or only POLYGON geometries.",
         call. = FALSE
       )
     }
 
+    # Reject objects that are not point or polygon objects.
     if (!(data_geometry %in% c("POINT", "POLYGON"))) {
       stop(
-        "[Data Formatting] sf object provided, but not a set of POINT or POLYGON geometries.",
+        "[Data Formatting] sf object provided, but not a set of POINT or",
+        " POLYGON geometries.",
         call. = FALSE
       )
     }
 
+    # Return stored information.
     return(list(type = data_type, geometry = data_geometry))
+
+    # Check if input is a terra SpatVector.
   } else if ("SpatVector" %in% class(data)) {
+    # Store data type.
     data_type <- "terra"
 
+    # Store data geometry.
     data_geometry <- terra::geomtype(data)
 
+    # Reject objects that are not point or polygon objects.
     if (!(data_geometry %in% c("points", "polygons"))) {
       stop(
-        "[Data Formatting] terra object provided, but not a set of points or polygons.",
+        "[Data Formatting] terra object provided, but not a set of points or",
+        " polygons.",
         call. = FALSE
       )
     }
 
+    # Return stored information.
     return(list(type = data_type, geometry = data_geometry))
+
+    # Check if data is a dataframe.
   } else if (is.data.frame(data)) {
+    # Store data type.
     data_type <- "data.frame"
 
+    # Return stored information.
     return(list(type = data_type))
+
+    # Reject all other data types.
   } else {
     stop(
-      "[Data Formatting] invalid data format. Please provide data as either a dataframe, sf object with either `POINT` or `POLYGON` geometry, or terra SpatVector object with `points` or `polygons` geometry.",
+      "[Data Formatting] invalid data format. Please provide data as either a",
+      " dataframe, sf object with either `POINT` or `POLYGON` geometry, or",
+      " terra SpatVector object with `points` or `polygons` geometry.",
       call. = FALSE
     )
   }
@@ -383,15 +450,22 @@ covariate_fmt_check <- function(data) {
 
 data_fmt <- function(
   data,
-  site_name = NULL,
+  site_name = NULL, # optional argument to provide column name containing site
+  # names. Default is assumed to be the BMDE column 'SurveyAreaIdentifier'.
   coord_lon = NULL, # as in cosewic_ranges
   coord_lat = NULL, # as in cosewic_ranges
-  date_year = NULL,
-  date_month = NULL,
-  date_day = NULL,
-  date_lubridate = NULL,
-  date_ordinal = NULL,
-  crs = NULL
+  date_year = NULL, # optional argument to provide column name containing year
+  # data. Default is assumed to be the BMDE column 'survey_year'.
+  date_month = NULL, # optional argument to provide column name containing month
+  # data. Default is assumed to be the BMDE column 'survey_month'.
+  date_day = NULL, # optional argument to provide column name containing day
+  # data. Default is assumed to be the BMDE column 'survey_day'.
+  date_lubridate = NULL, # optional argument to provide column name containing
+  # 'lubridate' date objects.
+  date_ordinal = NULL, # optional argument to provide column name containing
+  # ordinal dates.
+  crs = NULL # optional argument to provide a Coordinate Reference System for
+  # provided data.
 ) {
   message("[Data Formatting] beginning formatting.")
 
@@ -415,23 +489,39 @@ data_fmt <- function(
 
   # Deal with alternate CRS's
 
+  # Check that 'crs' argument has been provided.
   if (!is.null(crs)) {
+    # Check if input is an sf object.
     if (input_fmt$type == "sf") {
+      # Check if provided sf object has a CRS. If missing, set to provided CRS.
+      # Warn.
       if (is.na(sf::st_crs(data))) {
         warning(
-          "[Data Formatting] the CRS of the provided sf object is missing, it will be set to the alternate CRS specified in the 'crs' argument.",
+          "[Data Formatting] the CRS of the provided sf object is missing, it",
+          " will be set to the alternate CRS specified in the 'crs' argument.",
           call. = FALSE
         )
 
         suppressWarnings(sf::st_crs(data) <- crs)
-        
-        if(is.na(sf::st_crs(data))){
-          stop("[Data Formatting] the provided CRS is invalid. CRS must be a valid proj4string character, a valid epsg integer value, or a list containing named elements proj4string (character) and/or epsg (integer).",
-               call. = FALSE)
+
+        # If sf object still is missing CRS, suggests that provided CRS is
+        # invalid. Return error.
+        if (is.na(sf::st_crs(data))) {
+          stop(
+            "[Data Formatting] the provided CRS is invalid. CRS must be a",
+            " valid proj4string character, a valid epsg integer value, or a list",
+            " containing named elements proj4string (character) and/or epsg",
+            " (integer).",
+            call. = FALSE
+          )
         }
       } else {
+        # If sf object has a CRS and the 'crs' argument has been provided, use
+        # the CRS included in the sf object. Warn.
         warning(
-          "[Data Formatting] the sf object provided has a specified CRS and a CRS has been provided using the 'crs' argument. The CRS of the sf object will be used.",
+          "[Data Formatting] the sf object provided has a specified CRS and a",
+          " CRS has been provided using the 'crs' argument. The CRS of the sf",
+          " object will be used.",
           call. = FALSE
         )
 
@@ -439,33 +529,69 @@ data_fmt <- function(
       }
     }
 
+    # Check if input is a terra SpatVector.
     if (input_fmt$type == "terra") {
+      # Check if provided terra object has a CRS. If missing, set to provided
+      # CRS. Warn.
       if (terra::crs(data) == "") {
         warning(
-          "[Data Formatting] the CRS of the provided terra object is missing, it will be set to the alternate CRS specified in the 'crs' argument.",
+          "[Data Formatting] the CRS of the provided terra object is missing,",
+          " it will be set to the alternate CRS specified in the 'crs'",
+          " argument.",
           call. = FALSE
         )
 
-        tryCatch(terra::crs(data) <- crs,
-                 warning = function(w){
-                   if("[crs<-] Cannot set SRS to vector: empty srs" %in% conditionMessage(w) | "PROJ: proj_create_from_database: crs not found: EPSG:234634 (GDAL error 1)" %in% conditionMessage(w)) {
-                     stop("[Data Formatting] the provided CRS is invalid. CRS must be a character string in WKT (e.g. 'EPSG:4326') or PROJ-string format (e.g. '+proj=utm +zone=12').",
-                          call. = FALSE)
-                   } else {
-                     warning(conditionMessage(w), call.  = FALSE)
-                   }
-                 },
-                 error = function(e){
-                   if(conditionMessage(e) == "[crs] I do not know what to do with this argument (expected a character string)") {
-                     stop("[Data Formatting] the provided CRS is invalid. CRS must be a character string in WKT (e.g. 'EPSG:4326') or PROJ-string format (e.g. '+proj=utm +zone=12').",
-                          call. = FALSE)
-                   } else {
-                     stop(conditionMessage(e), call. = FALSE)
-                   }
-                 })
+        # Convert terra warnings associated with invalid CRS inputs into errors.
+        tryCatch(
+          terra::crs(data) <- crs,
+          warning = function(w) {
+            if (
+              "[crs<-] Cannot set SRS to vector: empty srs" %in%
+                conditionMessage(w) |
+                paste0(
+                  "PROJ: proj_create_from_database: crs not found:",
+                  " EPSG:234634 (GDAL error 1)"
+                ) %in%
+                  conditionMessage(w)
+            ) {
+              stop(
+                "[Data Formatting] the provided CRS is invalid. CRS",
+                " must be a character string in WKT (e.g. 'EPSG:4326') or",
+                " PROJ-string format (e.g. '+proj=utm +zone=12').",
+                call. = FALSE
+              )
+            } else {
+              warning(conditionMessage(w), call. = FALSE)
+            }
+          },
+          error = function(e) {
+            if (
+              conditionMessage(e) ==
+                paste0(
+                  "[crs] I do not know what",
+                  " to do with this argument",
+                  " (expected a character",
+                  " string)"
+                )
+            ) {
+              stop(
+                "[Data Formatting] the provided CRS is invalid. CRS",
+                " must be a character string in WKT (e.g. 'EPSG:4326') or",
+                " PROJ-string format (e.g. '+proj=utm +zone=12').",
+                call. = FALSE
+              )
+            } else {
+              stop(conditionMessage(e), call. = FALSE)
+            }
+          }
+        )
       } else {
+        # If terra object has a CRS and the 'crs' argument has been provided,
+        # use the CRS included in the terra object. Warn.
         warning(
-          "[Data Formatting] the terra object provided has a specified CRS and a CRS has been provided using the 'crs' argument. The CRS of the terra object will be used.",
+          "[Data Formatting] the terra object provided has a specified CRS and",
+          " a CRS has been provided using the 'crs' argument. The CRS of the",
+          " terra object will be used.",
           call. = FALSE
         )
 
@@ -473,50 +599,71 @@ data_fmt <- function(
       }
     }
 
+    # If provided data is a data.frame, make sure we have the names of columns
+    # pointing us to associated coordinate data. If not, return error.
     if (
       input_fmt$type == "data.frame" & (is.null(coord_lon) | is.null(coord_lat))
     ) {
       stop(
-        "[Data Formatting] alternate CRS provided, but without specified column for one or more coordinate. Use the 'coord_lon' argument to give the name of column containing the X-coordinate, and the 'coord_lat' argument to give the name of the column containing the Y-coordinate.",
+        "[Data Formatting] alternate CRS provided, but without specified",
+        " column for one or more coordinate. Use the 'coord_lon' argument to",
+        " give the name of column containing the X-coordinate, and the",
+        " 'coord_lat' argument to give the name of the column containing the",
+        " Y-coordinate.",
         call. = FALSE
       )
     }
   }
 
+  # If no 'crs' argument is provided, and provided sf object lacks a CRS,
+  # return error.
   if (is.null(crs) & input_fmt$type == "sf") {
     if (is.na(sf::st_crs(data))) {
       stop(
-        "[Data Formatting] provided sf object lacks a CRS. Please specify using the 'crs' argument or provide an sf object with a CRS.",
+        "[Data Formatting] provided sf object lacks a CRS. Please specify",
+        " using the 'crs' argument or provide an sf object with a CRS.",
         call. = FALSE
       )
     }
   }
 
+  # If no 'crs' argument is provided, and provided terra object lacks a CRS,
+  # return error.
   if (is.null(crs) & input_fmt$type == "terra") {
     if (terra::crs(data) == "") {
       stop(
-        "[Data Formatting] provided terra object lacks a CRS. Please specify using the 'crs' argument or provide a terra object with a CRS.",
+        "[Data Formatting] provided terra object lacks a CRS. Please specify",
+        " using the 'crs' argument or provide a terra object with a CRS.",
         call. = FALSE
       )
     }
   }
 
+  # If no 'crs' argument is provided, and provided data is a dataframe, assume
+  # it is the default NatureCounts format which uses lat/lon and use EPSG:4326.
+  # Warn.
   if (is.null(crs) & input_fmt$type == "data.frame") {
     warning(
-      "[Data Formatting] as the 'crs' argument is not specified, data CRS is assumed to be EPSG:4326.",
+      "[Data Formatting] as the 'crs' argument is not specified, data CRS is",
+      " assumed to be EPSG:4326.",
       call. = FALSE
     )
 
     crs <- 4326
   }
 
+  # If spatial object is provided and the 'coord_lon'/'coord_lat' arguments
+  # have been provided, use the coordinate data included in the spatial object.
+  # Warn.
   if (
     input_fmt$type %in%
       c("sf", "terra") &
       (!is.null(coord_lon) | !is.null(coord_lat))
   ) {
     warning(
-      "[Data Formatting] sf or terra object provided as well as a lat/lon column name. lat/lon will be derived from the spatial data within the sf/terra object and specified lat/lon column will be ignored.",
+      "[Data Formatting] sf or terra object provided as well as a lat/lon",
+      " column name. lat/lon will be derived from the spatial data within the",
+      " sf/terra object and specified lat/lon column will be ignored.",
       call. = FALSE
     )
 
@@ -524,8 +671,9 @@ data_fmt <- function(
     coord_lat <- NULL
   }
 
-  # Check that all specified column names are present in the data
+  # Check that all specified column names are present in the data.
 
+  # Gather all potentially specified columns.
   specified_cols <- c(
     site_name,
     coord_lon,
@@ -537,23 +685,27 @@ data_fmt <- function(
     date_ordinal
   )
 
+  # Remove any that haven't been specified.
   specified_cols <- specified_cols[!is.null(specified_cols)]
 
   data_cols <- names(data)
 
+  # Compare to columns present in data. Return error if any specified columns
+  # are not present.
   if (!(all(specified_cols %in% data_cols))) {
     stop(
       "[Data Formatting] some specified columns missing from the data: ",
       stringr::str_flatten_comma(specified_cols[
         !(specified_cols %in% data_cols)
       ]),
-      ". Use arguments to specify alternate column names if using data that diverges from naturecounts default column names.",
+      ". Use arguments to specify alternate column names if using data that",
+      " diverges from NatureCounts default column names.",
       call. = FALSE
     )
   }
 
-  # Conform specified columns to naturecounts default column names
-
+  # Conform specified columns to naturecounts default column names. Calls to
+  # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name)) {
     data <- dplyr::rename(
       `if`(input_fmt$type == "sf", sf::st_sf(data), data),
@@ -565,7 +717,8 @@ data_fmt <- function(
 
   if (input_fmt$type == "data.frame") {
     if (!is.null(coord_lon)) {
-      # Edge case: there is a col called longitude that isn't coord_lon
+      # Edge case: there is a col called longitude that isn't coord_lon.
+      # Remove.
       if ("longitude" %in% names(data) & !(coord_lon == "longitude")) {
         data <- dplyr::select(data, -longitude)
       }
@@ -579,7 +732,7 @@ data_fmt <- function(
     data$longitude <- as.numeric(data$longitude)
 
     if (!is.null(coord_lat)) {
-      # Edge case: there is a col called latitude that isn't coord_lat
+      # Edge case: there is a col called latitude that isn't coord_lat. Remove.
       if ("latitude" %in% names(data) & !(coord_lat == "latitude")) {
         data <- dplyr::select(data, -latitude)
       }
@@ -605,40 +758,54 @@ data_fmt <- function(
       survey_month = !!rlang::sym(date_month)
     )
   }
-  
-  month_corr <- c()
-  
-  for (i in 1:length(data$survey_month)) {
-    month_corr[i] <- month_check(data$survey_month[i])
+
+  # Use month_check() to validate month data. 'if' wrapper needed to handle
+  # cases where no month column was provided, and a lubridate or ordinal date
+  # column was provided instead.
+  if ("survey_month" %in% names(data)) {
+    month_corr <- c()
+
+    for (i in 1:length(data$survey_month)) {
+      month_corr[i] <- month_check(data$survey_month[i])
+    }
+
+    data$survey_month <- month_corr
   }
-  
-  data$survey_month <- month_corr
-  
+
   if (!is.null(date_day)) {
     data <- dplyr::rename(
       `if`(input_fmt$type == "sf", sf::st_sf(data), data),
       survey_day = !!rlang::sym(date_day)
     )
   }
-  
-  for (i in data$survey_day) {
-    dom_check(i)
+
+  # Use dom_check() to validate day data. 'if' wrapper needed to handle cases
+  # where no month column was provided, and a lubridate or ordinal date column
+  # was provided instead.
+  if ("survey_day" %in% names(data)) {
+    for (i in data$survey_day) {
+      dom_check(i)
+    }
   }
 
-  # If a date in lubridate or ordinal format is provided, make year, month and day columns.
-
+  # If a date in lubridate or ordinal format is provided, make year, month and
+  # day columns.
   if (!is.null(date_lubridate)) {
+    # Standardize date column name
     data <- dplyr::mutate(data, date = !!rlang::sym(date_lubridate))
 
+    # Check that provided lubridate data is a date object. If not, return error.
     if (!lubridate::is.Date(data$date)) {
       stop(
         "[Data Formatting] column ",
         date_lubridate,
-        " expected to be in lubridate `Date` format, but is not.",
+        " expected to be in `Date` format, but is not.",
         call. = FALSE
       )
     }
 
+    # Check that provided lubridate data is an instant rather than a duration
+    # object. If not, return error.
     if (!lubridate::is.instant(data$date)) {
       stop(
         "[Data Formatting] column ",
@@ -648,13 +815,18 @@ data_fmt <- function(
       )
     }
 
+    # Check that all dates are either the current date or in the past. If not,
+    # return error.
     if (!all(data$date <= as.Date(Sys.Date()))) {
       stop(
-        "[Data Formatting] some dates are in the future! Covariate data only available for data in the past.",
+        "[Data Formatting] some dates are in the future! Covariate data only",
+        " available for data in the past.",
         call. = FALSE
       )
     }
 
+    # If lubridate column provided alongside other specified date column
+    # options, use data from lubridate columns. Warn.
     if (
       !is.null(date_year) |
         !is.null(date_month) |
@@ -682,65 +854,86 @@ data_fmt <- function(
       )
     }
 
+    # Extract year/month/day columns from lubridate date.
     data$survey_year <- lubridate::year(data$date)
 
     data$survey_month <- lubridate::month(data$date)
 
     data$survey_day <- lubridate::day(data$date)
 
+    # In case ordinal data has also been provided, set to NULL so dates aren't
+    # recalculated using ordinal data.
     date_year <- NULL
 
     date_ordinal <- NULL
   }
 
+  # If a date in ordinal format is provided (and a date in lubridate format is
+  # not provided, see above), make year, month and day columns.
   if (!is.null(date_ordinal)) {
+    # Standardize ordinal date column name
     data <- dplyr::mutate(data, doy = !!rlang::sym(date_ordinal))
 
+    # Check that year data has been provided alongside ordinal day data as this
+    # is needed to convert to calendar date. If not, return error.
     if (!("survey_year" %in% names(data))) {
       stop(
-        "[Data Formatting] if providing an ordinal date, year data must accompany it. Please provide a column with associated year data using the `date_year` argument.",
+        "[Data Formatting] if providing an ordinal date, year data must",
+        " accompany it. Please provide a column with associated year data",
+        " using the `date_year` argument.",
         call. = FALSE
       )
     }
 
+    # Use doy_check() to validate ordinal date data.
     for (i in data$doy) {
       doy_check(i)
     }
 
+    # If month or day data has also been provided, warn that ordinal date data
+    # will supersede it.
     if (!is.null(date_month) | !is.null(date_day)) {
       warning(
-        paste0(
-          "[Data Formatting] dates derived from ordinal dates will supercede provided month and/or day data"
-        ),
+        "[Data Formatting] dates derived from ordinal dates will supersede",
+        " provided month and/or day data.",
         call. = FALSE
       )
     }
 
+    # If ordinal date is numeric, add it to the first day of the associated
+    # year to get the calendar date.
     if (is.numeric(data$doy)) {
       data$date <- as.Date(paste0(data$survey_year, "-01-01")) + data$doy - 1
     }
 
+    # If ordinal date has been provided as a date object (likely due to
+    # misunderstanding of the meaning of ordinal date) convert it to ordinal
+    # date and add it to the first day of the associated calendar year.
     if (lubridate::is.Date(data$doy)) {
       data$date <- as.Date(paste0(data$survey_year, "-01-01")) +
         lubridate::yday(data$doy) -
         1
     }
 
+    # Extract month and day data from ordinal-derived date column
     data$survey_month <- lubridate::month(data$date)
 
     data$survey_day <- lubridate::day(data$date)
   }
 
+  # Ensure date columns are numeric.
   data$survey_year <- as.numeric(data$survey_year)
 
   data$survey_month <- as.numeric(data$survey_month)
 
   data$survey_day <- as.numeric(data$survey_day)
 
+  # If data is a dataframe, ensure that there are no rows missing coordinate
+  # data as this would prevent conversion into an sf object. Warn.
   if (input_fmt$type == "data.frame") {
     if (NA %in% unique(data$latitude) | NA %in% unique(data$longitude)) {
       warning(
-        "[Data Formatting] some sites missing coordinate data will be dropped.",
+        "[Data Formatting] some rows missing coordinate data will be dropped.",
         call. = FALSE
       )
 
@@ -748,9 +941,11 @@ data_fmt <- function(
     }
   }
 
-  # Handle missing SurveyAreaIdentifiers
-
+  # Handle missing SurveyAreaIdentifiers and ensure coordinates are present in
+  # the data for later use in nc_covariates_merge().
   if (TRUE %in% is.na(data$SurveyAreaIdentifier)) {
+    # For dataframe objects create an object containing all X/Y coordinates
+    # that do not have an associated SurveyAreaIdentifier.
     if (input_fmt$type == "data.frame") {
       missing_sitecode <- data %>%
         dplyr::select(SurveyAreaIdentifier, latitude, longitude) %>%
@@ -758,26 +953,20 @@ data_fmt <- function(
         dplyr::distinct()
     }
 
+    # For sf objects, create an object containing all X/Y coordinates (derived
+    # from geometries) that do not have an associated SurveyAreaIdentifier.
+    # Also append coordinates to original data object for later joining.
     if (input_fmt$type == "sf") {
-      if ("X" %in% names(data)) {
-        x_storage <- data$X
-
-        data$X <- NULL
-      }
-
-      if ("Y" %in% names(data)) {
-        y_storage <- data$Y
-
-        data$Y <- NULL
-      }
-
       missing_sitecode <- data %>%
         dplyr::select(SurveyAreaIdentifier, geometry)
 
+      # For polygons, use the centroid as the X/Y coordinates.
       if (input_fmt$geometry == "POLYGON") {
         missing_sitecode <- suppressWarnings(sf::st_centroid(missing_sitecode))
       }
 
+      # Extract coordinates and bind to data. Drop geometry and get all
+      # unique coordinate combinations with missing SurveyAreaIdentifiers.
       missing_sitecode <- cbind(
         missing_sitecode,
         sf::st_coordinates(missing_sitecode)
@@ -787,26 +976,33 @@ data_fmt <- function(
         dplyr::filter(is.na(SurveyAreaIdentifier)) %>%
         dplyr::distinct()
 
-      # Edge case: there is a col called X
+      # Edge case: there is a col called X. This does not lead to the removal
+      # of this column in final data when merged using nc_covariates_merge().
       if ("X" %in% names(data)) {
         data <- dplyr::select(data, -X)
       }
 
-      # Edge case: there is a col called Y
+      # Edge case: there is a col called Y. This does not lead to the removal
+      # of this column in final data when merged using nc_covariates_merge().
       if ("Y" %in% names(data)) {
         data <- dplyr::select(data, -Y)
       }
 
-      # Edge case: there is a col called longitude
+      # Edge case: there is a col called longitude. This does not lead to the
+      # removal of this column in final data when merged using
+      # nc_covariates_merge().
       if ("longitude" %in% names(data)) {
         data <- dplyr::select(data, -longitude)
       }
 
-      # Edge case: there is a col called longitude
+      # Edge case: there is a col called latitude. This does not lead to the
+      # removal of this column in final data when merged using
+      # nc_covariates_merge().
       if ("latitude" %in% names(data)) {
         data <- dplyr::select(data, -latitude)
       }
 
+      # Append coordinates (from centroids if polygons) to provided data object.
       if (input_fmt$geometry == "POLYGON") {
         data <- cbind(
           data,
@@ -819,14 +1015,21 @@ data_fmt <- function(
       }
     }
 
+    # For terra objects, create an object containing all X/Y coordinates
+    # (derived from geometries) that do not have an associated
+    # SurveyAreaIdentifier. Also append coordinates to original data object for
+    # later joining.
     if (input_fmt$type == "terra") {
       missing_sitecode <- data %>%
         tidyterra::select(SurveyAreaIdentifier)
 
+      # For polygons, use the centroid as the X/Y coordinates.
       if (input_fmt$geometry == "polygons") {
         missing_sitecode <- terra::centroids(missing_sitecode)
       }
 
+      # Extract coordinates and bind to data. Drop geometry and get all
+      # unique coordinate combinations with missing SurveyAreaIdentifiers.
       missing_sitecode <- cbind(
         missing_sitecode,
         terra::crds(missing_sitecode)
@@ -836,26 +1039,33 @@ data_fmt <- function(
         dplyr::filter(is.na(SurveyAreaIdentifier)) %>%
         dplyr::distinct()
 
-      # Edge case: there is a col called x
+      # Edge case: there is a col called x. This does not lead to the removal
+      # of this column in final data when merged using nc_covariates_merge().
       if ("x" %in% names(data)) {
         data <- tidyterra::select(data, -x)
       }
 
-      # Edge case: there is a col called y
+      # Edge case: there is a col called y. This does not lead to the removal
+      # of this column in final data when merged using nc_covariates_merge().
       if ("y" %in% names(data)) {
         data <- tidyterra::select(data, -y)
       }
 
-      # Edge case: there is a col called longitude
+      # Edge case: there is a col called longitude. This does not lead to the
+      # removal of this column in final data when merged using
+      # nc_covariates_merge().
       if ("longitude" %in% names(data)) {
         data <- dplyr::select(data, -longitude)
       }
 
-      # Edge case: there is a col called longitude
+      # Edge case: there is a col called latitude. This does not lead to the
+      # removal of this column in final data when merged using
+      # nc_covariates_merge().
       if ("latitude" %in% names(data)) {
         data <- dplyr::select(data, -latitude)
       }
 
+      # Append coordinates (from centroids if polygons) to provided data object.
       if (input_fmt$geometry == "polygons") {
         data <- cbind(data, terra::crds(terra::centroids(data))) %>%
           dplyr::rename(longitude = x, latitude = y)
@@ -865,10 +1075,13 @@ data_fmt <- function(
       }
     }
 
+    # Create a dummy SurveyAreaIdentifier for all unique coordinate combinations
+    # which are missing an associated SurveyAreaIdentifier.
     for (i in 1:nrow(missing_sitecode)) {
       missing_sitecode$SurveyAreaIdentifier[i] <- paste0("FilledSurveyArea", i)
     }
 
+    # Use coordinates to join dummy SurveyAreaIdentifiers to original data.
     for (i in missing_sitecode$latitude) {
       for (j in missing_sitecode$longitude[missing_sitecode$latitude == i]) {
         data$SurveyAreaIdentifier[
@@ -879,27 +1092,36 @@ data_fmt <- function(
       }
     }
   } else {
+    # In case all SurveyAreaIdentifiers are present, append coordinates to
+    # spatial data objects for later use in nc_covariates_merge().
     if (input_fmt$type == "sf") {
-      # Edge case: there is a col called X
+      # Edge case: there is a col called X. This does not lead to the removal
+      # of this column in final data when merged using nc_covariates_merge().
       if ("X" %in% names(data)) {
         data <- dplyr::select(data, -X)
       }
 
-      # Edge case: there is a col called Y
+      # Edge case: there is a col called Y. This does not lead to the removal
+      # of this column in final data when merged using nc_covariates_merge().
       if ("Y" %in% names(data)) {
         data <- dplyr::select(data, -Y)
       }
 
-      # Edge case: there is a col called longitude
+      # Edge case: there is a col called longitude. This does not lead to the
+      # removal of this column in final data when merged using
+      # nc_covariates_merge().
       if ("longitude" %in% names(data)) {
         data <- dplyr::select(data, -longitude)
       }
 
-      # Edge case: there is a col called longitude
+      # Edge case: there is a col called latitude. This does not lead to the
+      # removal of this column in final data when merged using
+      # nc_covariates_merge().
       if ("latitude" %in% names(data)) {
         data <- dplyr::select(data, -latitude)
       }
 
+      # Append coordinates (from centroids if polygons) to provided data object.
       if (input_fmt$geometry == "POLYGON") {
         data <- cbind(
           data,
@@ -913,26 +1135,33 @@ data_fmt <- function(
     }
 
     if (input_fmt$type == "terra") {
-      # Edge case: there is a col called x
+      # Edge case: there is a col called x. This does not lead to the removal
+      # of this column in final data when merged using nc_covariates_merge().
       if ("x" %in% names(data)) {
         data <- tidyterra::select(data, -x)
       }
 
-      # Edge case: there is a col called y
+      # Edge case: there is a col called y. This does not lead to the removal
+      # of this column in final data when merged using nc_covariates_merge().
       if ("y" %in% names(data)) {
         data <- tidyterra::select(data, -y)
       }
 
-      # Edge case: there is a col called longitude
+      # Edge case: there is a col called longitude. This does not lead to the
+      # removal of this column in final data when merged using
+      # nc_covariates_merge().
       if ("longitude" %in% names(data)) {
         data <- tidyterra::select(data, -longitude)
       }
 
-      # Edge case: there is a col called longitude
+      # Edge case: there is a col called latitude. This does not lead to the
+      # removal of this column in final data when merged using
+      # nc_covariates_merge().
       if ("latitude" %in% names(data)) {
         data <- tidyterra::select(data, -latitude)
       }
 
+      # Append coordinates (from centroids if polygons) to provided data object.
       if (input_fmt$geometry == "polygons") {
         data <- cbind(data, terra::crds(terra::centroids(data))) %>%
           dplyr::rename(longitude = x, latitude = y)
@@ -943,6 +1172,7 @@ data_fmt <- function(
     }
   }
 
+  # Create base list of columns to preserve.
   keep_cols <- c(
     "SurveyAreaIdentifier",
     "latitude",
@@ -952,45 +1182,68 @@ data_fmt <- function(
     "survey_day"
   )
 
+  # If ordinal date provided, preserve it for later use in
+  # nc_covariates_merge().
   if (!is.null(date_ordinal)) {
     keep_cols <- c(keep_cols[1:4], date_ordinal, keep_cols[5:6])
   }
 
+  # If lubridate date provided, preserve it for later use in
+  # nc_covariates_merge().
   if (!is.null(date_lubridate)) {
     keep_cols <- c(keep_cols[1:3], date_lubridate, keep_cols[4:6])
   }
 
+  # For dataframe objects, convert to spatial features object.
   if (input_fmt$type == "data.frame") {
-    suppressWarnings(data <- dplyr::select(data, tidyselect::all_of(keep_cols)) %>%
-      dplyr::distinct() %>%
-      sf::st_as_sf(
-        coords = c("longitude", "latitude"),
-        crs = crs,
-        remove = FALSE
-      ))
-    
-    if(is.na(sf::st_crs(data))) {
-      stop("[Data Formatting] the provided CRS is invalid. CRS must be a valid proj4string character, a valid epsg integer value, or a list containing named elements proj4string (character) and/or epsg (integer).",
-           call. = FALSE)
+    # Get all distinct combinations of kept columns, convert to sf object.
+    suppressWarnings(
+      data <- dplyr::select(data, tidyselect::all_of(keep_cols)) %>%
+        dplyr::distinct() %>%
+        sf::st_as_sf(
+          coords = c("longitude", "latitude"),
+          crs = crs,
+          remove = FALSE
+        )
+    )
+
+    # If created spatial object CRS is missing, provided CRS was invalid.
+    # Return error.
+    if (is.na(sf::st_crs(data))) {
+      stop(
+        "[Data Formatting] the provided CRS is invalid. CRS must be a valid",
+        " proj4string character, a valid epsg integer value, or a list",
+        " containing named elements proj4string (character) and/or epsg",
+        " (integer).",
+        call. = FALSE
+      )
     }
-    
+
+    # Convert to CRS with metres as a base unit to facilitate buffering.
     data <- sf::st_transform(data, "ESRI:102001")
   }
 
+  # For sf objects, keep all distinct combinations of kept columns.
   if (input_fmt$type == "sf") {
+    # Ensure geometry column is retained.
     keep_cols <- c(keep_cols, "geometry")
 
+    # Convert to CRS with metres as a base unit to facilitate buffering.
     data <- dplyr::select(data, tidyselect::all_of(keep_cols)) %>%
       dplyr::distinct() %>%
       sf::st_transform("ESRI:102001")
   }
 
+  # For terra objects, keep all distinct combinations of kept columns and
+  # convert to CRS with metres as a base unit to facilitate buffering.
   if (input_fmt$type == "terra") {
     data <- tidyterra::select(data, tidyselect::all_of(keep_cols)) %>%
       tidyterra::distinct() %>%
       terra::project("ESRI:102001")
   }
 
+  # Store specified column names and crs as attributes so that they don't need
+  # to be specified any time associated functions are called.
   if (!is.null(site_name)) {
     names(data)[names(data) == "SurveyAreaIdentifier"] <- site_name
     attr(data, "site_name") <- site_name
@@ -1033,37 +1286,39 @@ data_fmt <- function(
     attr(data, "crs") <- crs
   }
 
+  # Return formatted data.
   return(data)
 }
 
 # Function to buffer data by a specified radius
-
 data_buff <- function(
   data,
-  buffer = FALSE,
-  buffer_radius = 500,
-  buffer_units = "m"
+  buffer = FALSE, # Should the data be buffered?
+  buffer_radius = 500, # Radial distance to buffer by.
+  buffer_units = "m" # Units of provided distance.
 ) {
+  # Unless buffering requested, do nothing.
   if (buffer == TRUE) {
     # Check packages
-
-    have_pkg_check(c("terra",
-                     "sf",
-                     "measurements"))
+    have_pkg_check(c("terra", "sf", "measurements"))
 
     # Check data is in the desired format
-
     input_fmt <- covariate_fmt_check(data)
 
+    # If not an sf or terra object, return error and point towards data_fmt().
     if (input_fmt$type == "data.frame") {
       stop(
-        "[Data Buffering] buffering requires an sf or terra object as input in this workflow. Consider using `data_fmt` to conform data first.",
+        "[Data Buffering] buffering requires an sf or terra object as input in",
+        " this workflow. Consider using `data_fmt` to conform data first.",
         call. = FALSE
       )
     }
 
+    # Ensure radius is coercable to a numeric value.
     buffer_radius <- as.numeric(buffer_radius)
 
+    # If unit provided is not compatible with measurements::conv_unit(), return
+    # error.
     if (!(buffer_units %in% c("m", "km", "ft", "yd", "mi", "naut_mi"))) {
       stop(
         "[Data Buffering] buffer units not recognized: please set buffer_units to one of 'm' [metres], 'km' [kilometers], 'ft' [feet], 'yd' [yards], 'mi' [miles], or 'naut_mi' [nautical miles].",
@@ -1080,16 +1335,23 @@ data_buff <- function(
       "."
     )
 
+    # Buffer sf objects by requested amount.
     if (input_fmt$type == "sf") {
+      # Store original CRS so data can be returned as provided.
       orig_crs <- terra::crs(data)
 
+      # If not already in CRS used herein, transform.
       if (!(orig_crs == terra::crs("ESRI:102001"))) {
         data <- sf::st_transform(data, "ESRI:102001")
       }
 
+      # If sf object contains polygon, warn that polygons will be buffered on
+      # all sides. This might help users catch mistakes when pre-buffered data
+      # is provided and they don't want it additionally buffered.
       if (input_fmt$geometry == "POLYGON") {
         warning(
-          "[Data Buffering] sf POLYGON geometry provided. Existing polygons will be buffered by an additional ",
+          "[Data Buffering] sf POLYGON geometry provided. Existing polygons",
+          " will be buffered by an additional ",
           buffer_radius,
           buffer_units,
           ".",
@@ -1097,6 +1359,7 @@ data_buff <- function(
         )
       }
 
+      # Buffer. Use measurements::conv_unit() to handle units other than metres.
       data <- sf::st_buffer(
         data,
         measurements::conv_unit(
@@ -1106,21 +1369,29 @@ data_buff <- function(
         )
       )
 
+      # Back-transform to original CRS if it wasn't the CRS used herein.
       if (!(orig_crs == terra::crs("ESRI:102001"))) {
         data <- sf::st_transform(data, orig_crs)
       }
     }
 
+    # Buffer terra objects by requested amount.
     if (input_fmt$type == "terra") {
+      # Store original CRS so data can be returned as provided.
       orig_crs <- terra::crs(data)
 
+      # If not already in CRS used herein, transform.
       if (!(orig_crs == terra::crs("ESRI:102001"))) {
         data <- terra::project(data, "ESRI:102001")
       }
 
+      # If terra object contains polygon, warn that polygons will be buffered on
+      # all sides. This might help users catch mistakes when pre-buffered data
+      # is provided and they don't want it additionally buffered.
       if (input_fmt$geometry == "polygons") {
         warning(
-          "[Data Buffering] terra polygons provided. Existing polygons will be buffered by an additional ",
+          "[Data Buffering] terra polygons provided. Existing polygons will",
+          " be buffered by an additional ",
           buffer_radius,
           buffer_units,
           ".",
@@ -1128,6 +1399,7 @@ data_buff <- function(
         )
       }
 
+      # Buffer. Use measurements::conv_unit() to handle units other than metres.
       data <- terra::buffer(
         data,
         measurements::conv_unit(
@@ -1137,26 +1409,38 @@ data_buff <- function(
         )
       )
 
+      # Back-transform to original CRS if it wasn't the CRS used herein.
       if (!(orig_crs == terra::crs("ESRI:102001"))) {
         data <- terra::project(data, orig_crs)
       }
     }
   }
 
+  # Return provided data if no buffering requested, or buffered data if
+  # buffering requested.
   return(data)
 }
 
 ############################ LANDCOVER FUNCTIONS ###############################
 
+# Function for downloading MODIS MCD12Q1 data from NASA EarthData. Wrapper for
+# luna::getNASA().
 landcover_download <- function(
   data,
-  ed_email = NULL,
-  site_name = NULL,
-  date_year = NULL,
-  dl_path = NULL
+  ed_email = NULL, # users' EarthData account email address.
+  site_name = NULL, # optional argument to provide column name containing site
+  # names. Default is assumed to be the BMDE column 'SurveyAreaIdentifier'. Can
+  # be left NULL and still function properly if originally specified in a call
+  # to data_fmt().
+  date_year = NULL, # optional argument to provide column name containing year
+  # data. Default is assumed to be the BMDE column 'survey_year'. Can
+  # be left NULL and still function properly if originally specified in a call
+  # to data_fmt().
+  dl_path = NULL # optional argument to provide path to download data to. By
+  # default, data is downloaded to a subfolder 'modis/' in the working
+  # directory.
 ) {
   # Check packages
-
   have_pkg_check(c(
     "askpass",
     "stringr",
@@ -1167,13 +1451,21 @@ landcover_download <- function(
     "luna"
   ))
 
+  # Check that an EarthData account email has been provided. If not, return
+  # error.
   if (is.null(ed_email)) {
     stop(
-      "[MODIS Landcover Download] MODIS Landcover data requested but Earthdata system login information not supplied. Please register at https://urs.earthdata.nasa.gov/users/new and supply using `ed_email` and `ed_password` parameters.",
+      "[MODIS Landcover Download] MODIS Landcover data requested but Earthdata",
+      " system login information not supplied. Please register at",
+      " https://urs.earthdata.nasa.gov/users/new and supply using `ed_email`",
+      " argument.",
       call. = FALSE
     )
   }
-  
+
+  # Check whether an EarthData password exists in the environment (is specified
+  # earlier in the nc_covariates() workflow), and if not, request using
+  # askpass::askpass().
   if (!exists("ed_password")) {
     ed_password <- askpass::askpass(
       prompt = paste0(
@@ -1181,20 +1473,26 @@ landcover_download <- function(
         "EarthData user '",
         ed_email,
         "'."
-      ))
+      )
+    )
   }
 
+  # Check data is in the desired format.
   input_fmt <- covariate_fmt_check(data)
 
+  # If not an sf or terra object, return error and point towards data_fmt().
   if (input_fmt$type == "data.frame") {
     stop(
-      "[MODIS Landcover Download] downloading requires an sf or terra object as input in this workflow. Consider using `data_fmt` to conform data first.",
+      "[MODIS Landcover Download] downloading requires an sf or terra object",
+      " as input in this workflow. Consider using `data_fmt` to conform data",
+      " first.",
       call. = FALSE
     )
   }
 
-  # Check that all specified column names are present in the data
-
+  # Check whether information on alternate column names has been stored
+  # in the attributes by data_fmt(). However, prioritize alternate column names
+  # specified in the current call.
   if (is.null(site_name) & !is.null(attr(data, "site_name"))) {
     site_name <- attr(data, "site_name")
   }
@@ -1203,27 +1501,39 @@ landcover_download <- function(
     date_year <- attr(data, "date_year")
   }
 
+  # Check that all specified column names are present in the data.
+
+  # Gather all potentially specified columns.
   specified_cols <- c(site_name, date_year)
 
+  # Remove any that haven't been specified.
   specified_cols <- specified_cols[!is.null(specified_cols)]
 
   data_cols <- names(data)
 
+  # Compare to columns present in data. Return error if any specified columns
+  # are not present. 'if' wrapper needed for when alternate column names exist
+  # in the attributes of the data, but conversion of those columns to
+  # standardized names has already taken place in data_fmt().
   if (
     !(all(specified_cols %in% data_cols)) &
       (!("SurveyAreaIdentifier" %in% data_cols) |
         !("survey_year" %in% data_cols))
   ) {
     stop(
-      "[MODIS Landcover Download] some specified columns missing from the data: ",
+      "[MODIS Landcover Download] some specified columns missing from the",
+      " data: ",
       stringr::str_flatten_comma(specified_cols[
         !(specified_cols %in% data_cols)
       ]),
-      ". Use arguments to specify alternate column names if using data that diverges from naturecounts default column names.",
+      ". Use arguments to specify alternate column names if using data that",
+      " diverges from naturecounts default column names.",
       call. = FALSE
     )
   }
 
+  # Conform specified columns to naturecounts default column names. Calls to
+  # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier") %in% data_cols) {
     data <- dplyr::rename(
       `if`(input_fmt$type == "sf", sf::st_sf(data), data),
@@ -1242,44 +1552,63 @@ landcover_download <- function(
 
   data$survey_year <- as.numeric(data$survey_year)
 
+  # Create area of interest polygon from provided sf object.
   if (input_fmt$type == "sf") {
+    # Check whether sf object is buffered or not to determine extraction
+    # procedure down the line.
     buffered <- ifelse(input_fmt$geometry == "POINT", FALSE, TRUE)
 
+    # Store original CRS so data can be returned as provided.
     orig_crs <- terra::crs(data)
 
+    # Convert to CRS used in this workflow if not already in that CRS, create
+    # bounding box polygon with generous buffer to ensure data isn't missed.
     if (!(orig_crs == terra::crs("ESRI:102001"))) {
       study_area <- sf::st_bbox(data) %>%
         sf::st_as_sfc() %>%
         sf::st_transform("ESRI:102001") %>%
-        sf::st_buffer(20000) %>% # might have to fiddle with this for extreme edge cases where someone buffers points by a huge distance
+        sf::st_buffer(20000) %>% # Arbitrarily high number selected (20km).
+        # Maybe unnecessary, could reduce download size.
         terra::vect()
     } else {
       study_area <- sf::st_bbox(data) %>%
         sf::st_as_sfc() %>%
-        sf::st_buffer(20000) %>% # might have to fiddle with this for extreme edge cases where someone buffers points by a huge distance
+        sf::st_buffer(20000) %>% # Arbitrarily high number selected (20km).
+        # Maybe unnecessary, could reduce download size.
         terra::vect()
     }
   }
 
+  # Create area of interest polygon from provided terra object.
   if (input_fmt$type == "terra") {
+    # Check whether terra object is buffered or not to determine extraction
+    # procedure down the line.
     buffered <- ifelse(input_fmt$geometry == "points", FALSE, TRUE)
 
+    # Store original CRS so data can be returned as provided.
     orig_crs <- terra::crs(data)
 
+    # Convert to CRS used in this workflow if not already in that CRS, create
+    # bounding box polygon with generous buffer to ensure data isn't missed.
     if (!(orig_crs == terra::crs("ESRI:102001"))) {
       study_area <- terra::ext(data) %>%
         terra::vect(crs = orig_crs) %>%
         terra::project("ESRI:102001") %>%
-        terra::buffer(20000)
+        terra::buffer(20000) # Arbitrarily high number selected (20km).
+      # Maybe unnecessary, could reduce download size.
     } else {
       study_area <- terra::ext(data) %>%
         terra::vect(crs = orig_crs) %>%
-        terra::buffer(20000)
+        terra::buffer(20000) # Arbitrarily high number selected (20km).
+      # Maybe unnecessary, could reduce download size.
     }
 
-    data <- sf::st_as_sf(data) # Maybe down the line write full process out in terra for terra data.
+    # Convert to sf object for use in workflow.
+    data <- sf::st_as_sf(data) # Maybe down the line write full process out
+    # in terra for terra data?
   }
 
+  # Create download path if it doesn't already exist.
   if (is.null(dl_path) & !dir.exists("./modis/MCD12Q1")) {
     dir.create("./modis/MCD12Q1", recursive = T)
   }
@@ -1290,10 +1619,11 @@ landcover_download <- function(
 
   message("[MODIS Landcover Download] downloading data.")
 
+  # Call to API using luna::getNASA()
   modis.files <- luna::getNASA(
     product = "MCD12Q1",
-    start = paste0(min(data$survey_year), "-01-01"),
-    end = paste0(max(data$survey_year), "-12-31"),
+    start = paste0(min(data$survey_year), "-01-01"), # Starting year
+    end = paste0(max(data$survey_year), "-12-31"), # End year
     aoi = terra::ext(terra::project(study_area, "epsg:4326")),
     download = TRUE,
     overwrite = FALSE,
@@ -1306,20 +1636,26 @@ landcover_download <- function(
     password = ed_password
   )
 
+  # Return character vector of filepaths to downloaded files.
   return(modis.files)
 }
 
+# Function to extract land cover data from provided MODIS MCD12Q1 data files.
 landcover_extract <- function(
   data,
-  covariates = "modis_lctype1",
-  landcover_files = NULL,
-  site_name = NULL,
-  date_year = NULL,
-  dl_path = NULL,
-  retain = TRUE
+  covariates = "modis_lctype1", # Other options listed in nc_covariate_table().
+  landcover_files = NULL, # Character vector of filepaths to downloaded files.
+  site_name = NULL, # optional argument to provide column name containing site
+  # names. Default is assumed to be the BMDE column 'SurveyAreaIdentifier'. Can
+  # be left NULL and still function properly if originally specified in a call
+  # to data_fmt().
+  date_year = NULL, # optional argument to provide column name containing year
+  # data. Default is assumed to be the BMDE column 'survey_year'. Can
+  # be left NULL and still function properly if originally specified in a call
+  # to data_fmt().
+  retain = TRUE # Should data files be kept after extraction?
 ) {
   # Check packages
-
   have_pkg_check(c(
     "stringr",
     "dplyr",
@@ -1331,22 +1667,28 @@ landcover_extract <- function(
     "landscapemetrics"
   ))
 
+  # Catch misspecified covariates. Return error if any exist.
   if (FALSE %in% (covariates %in% nc_covariate_table()$covariate_name)) {
     stop(
-      "[MODIS Landcover Extraction] covariates either not listed or one or more are invalid. Please provide covariate names as listed under `covariate_name` in nc_covariate_table().",
+      "[MODIS Landcover Extraction] covariates either not listed or one or",
+      " more are invalid. Please provide covariate names as listed under",
+      " `covariate_name` in nc_covariate_table().",
       call. = FALSE
     )
   }
 
+  # If no landcover files are provided, return error.
   if (is.null(landcover_files)) {
     stop(
-      "[MODIS Landcover Extraction] no landcover files provided to extract from. Please provide a vector containing filepaths of all necessary MODIS files for your data. Data can be downloaded using landcover_download.",
+      "[MODIS Landcover Extraction] no landcover files provided to extract from. Please provide a vector containing filepaths of all necessary MODIS files for your data. Data can be downloaded using landcover_download().",
       call. = FALSE
     )
   }
 
+  # Check data is in the desired format.
   input_fmt <- covariate_fmt_check(data)
 
+  # If not an sf or terra object, return error and point towards data_fmt().
   if (input_fmt$type == "data.frame") {
     stop(
       "[MODIS Landcover Extraction] extraction requires an sf or terra object as input in this workflow. Consider using `data_fmt` to conform data first.",
@@ -1354,8 +1696,9 @@ landcover_extract <- function(
     )
   }
 
-  # Store attributes so they don't get lost
+  # Store attributes so they don't get lost.
 
+  # List potential attributes.
   attr_names <- c(
     "site_name",
     "coord_lon",
@@ -1368,15 +1711,17 @@ landcover_extract <- function(
     "crs"
   )
 
+  # If any potential attribute names are present in the data attributes,
+  # store.
   if (length(attr_names[attr_names %in% names(attributes(data))]) > 0) {
     attrs <- attributes(data)[attr_names[
       attr_names %in% names(attributes(data))
     ]]
   }
 
-  # Check that all specified column names are present in the data
-
-  # Check attributes for specified column names if not specified in args.
+  # Check whether information on alternate column names has been stored
+  # in the attributes by data_fmt(). However, prioritize alternate column names
+  # specified in the current call.
   if (is.null(site_name) & !is.null(attr(data, "site_name"))) {
     site_name <- attr(data, "site_name")
   }
@@ -1385,12 +1730,20 @@ landcover_extract <- function(
     date_year <- attr(data, "date_year")
   }
 
+  # Check that all specified column names are present in the data.
+
+  # Gather all potentially specified columns.
   specified_cols <- c(site_name, date_year)
 
+  # Remove any that haven't been specified.
   specified_cols <- specified_cols[!is.null(specified_cols)]
 
   data_cols <- names(data)
 
+  # Compare to columns present in data. Return error if any specified columns
+  # are not present. 'if' wrapper needed for when alternate column names exist
+  # in the attributes of the data, but conversion of those columns to
+  # standardized names has already taken place in data_fmt().
   if (
     !(all(specified_cols %in% data_cols)) &
       (!("SurveyAreaIdentifier" %in% data_cols) |
@@ -1406,6 +1759,8 @@ landcover_extract <- function(
     )
   }
 
+  # Conform specified columns to naturecounts default column names. Calls to
+  # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
     data <- dplyr::rename(
       `if`(input_fmt$type == "sf", sf::st_sf(data), data),
@@ -1424,6 +1779,8 @@ landcover_extract <- function(
 
   data$survey_year <- as.numeric(data$survey_year)
 
+  # Check whether object is buffered or not to determine extraction
+  # procedure down the line.
   if (input_fmt$type == "sf") {
     buffered <- ifelse(input_fmt$geometry == "POINT", FALSE, TRUE)
   }
@@ -1431,9 +1788,12 @@ landcover_extract <- function(
   if (input_fmt$type == "terra") {
     buffered <- ifelse(input_fmt$geometry == "points", FALSE, TRUE)
 
+    # Convert to sf object for use in workflow.
     data <- sf::st_as_sf(data) # Maybe down the line write full process out in terra for terra data.
   }
 
+  # Parse dates stored in filenames of MODIS data files and append column to
+  # filenames.
   modis.files <- luna::modisDate(landcover_files)
   modis.files <- cbind(
     modis.files,
@@ -1442,10 +1802,12 @@ landcover_extract <- function(
 
   modis.files$year <- as.numeric(modis.files$year)
 
+  # Build object to use in matching sites to their respective MODIS data file.
   modis.match <- data %>%
     dplyr::select(SurveyAreaIdentifier, survey_year, geometry) %>%
     sf::st_transform(terra::crs(terra::rast(modis.files$filename[1])))
 
+  # If buffered, extract coordinates from centroids. Append coordinates.
   if (buffered == TRUE) {
     suppressWarnings(
       modis.match <- cbind(
@@ -1457,6 +1819,10 @@ landcover_extract <- function(
     modis.match <- cbind(modis.match, sf::st_coordinates(modis.match))
   }
 
+  # Loop through years to check that all are represented in the MODIS data.
+  # When requests are placed for data containing years not covered by MODIS,
+  # nothing in the downloading process alerts the user to this. Warn here, and
+  # use nearest year.
   for (i in sort(unique(modis.match$survey_year))) {
     if (!(i %in% modis.files$year)) {
       warning(
@@ -1475,12 +1841,16 @@ landcover_extract <- function(
     }
   }
 
+  # Open vector to store names of out of range sites. NOTE: this might not be
+  # that informative for datasets without dedicated site names.
   out_of_range <- c()
 
+  # Loop through each site-year combination and match to appropriate file.
   for (i in unique(modis.match$SurveyAreaIdentifier)) {
     for (j in unique(modis.match$survey_year[
       modis.match$SurveyAreaIdentifier == i
     ])) {
+      # Create temporary spatial object containing only the buffer for site i.
       tmp <- dplyr::filter(
         modis.match,
         SurveyAreaIdentifier == i,
@@ -1488,6 +1858,9 @@ landcover_extract <- function(
       ) %>%
         dplyr::distinct()
 
+      # Check if the coordinates of that site fall within the coverage of the
+      # provided MODIS files. If not, warn and note site name. If not, proceed
+      # with file-matching.
       if (
         all(tmp$X > modis.files$xmax) |
           all(tmp$X < modis.files$xmin) |
@@ -1497,12 +1870,16 @@ landcover_extract <- function(
         warning(
           "[MODIS Landcover Extraction] site ",
           i,
-          " falls outside of the spatial extent of the MODIS files provided. No value will be assigned.",
+          " falls outside of the spatial extent of the MODIS files provided.",
+          " No value will be assigned.",
           call. = FALSE
         )
 
         out_of_range <- c(out_of_range, i)
       } else {
+        # Match to appropriate file, using either the nearest year covered by
+        # MODIS if the data's year is outside MODIS coverage, or the data's
+        # year, and the site's coordinates.
         suppressWarnings(
           if (!(j %in% modis.files$year)) {
             modis.match[
@@ -1540,6 +1917,11 @@ landcover_extract <- function(
     rm(tmp)
   }
 
+  # Create object with parseable names for MODIS classes. Transcribed from
+  # documentation at
+  # https://lpdaac.usgs.gov/documents/101/MCD12_User_Guide_V6.pdf where
+  # class definitions are also available. NOTE: might be worth transcribing
+  # these into an object within NatureCounts.
   modis.classes <- list(
     modis_lctype1 = data.frame(
       class = c(1:17, 255),
@@ -1638,7 +2020,10 @@ landcover_extract <- function(
     )
   )
 
+  # Open loop going through each requested land cover classification and
+  # extracting.
   for (i in grep("modis_lc", covariates, value = T)) {
+    # Parse covariate name for layer name used by MODIS data files.
     index <- gsub("modis_lct", "LC_T", i)
 
     message(paste0(
@@ -1647,16 +2032,23 @@ landcover_extract <- function(
       "."
     ))
 
+    # Loop through each matched MODIS data file.
     for (j in stats::na.omit(unique(modis.match$filename))) {
+      # Create object with all sites that matched to file j.
       pts_to_fill <- data[
         data$SurveyAreaIdentifier %in%
           modis.match$SurveyAreaIdentifier[modis.match$filename == j],
       ]
 
+      # Open the requested layer in file j.
       modis <- terra::rast(j)[index]
 
+      # Loop through each site matched to file j and extract.
       for (k in unique(pts_to_fill$SurveyAreaIdentifier)) {
+        # If buffered, extract using exactextractr::exact_extract(). If not,
+        # extract using terra::extract().
         if (buffered == TRUE) {
+          # Create temporary object containing only the buffer for site k.
           tmp <- data %>%
             dplyr::filter(SurveyAreaIdentifier == k) %>%
             dplyr::select(SurveyAreaIdentifier, geometry) %>%
@@ -1664,13 +2056,20 @@ landcover_extract <- function(
             sf::st_transform(terra::crs(modis)) %>%
             terra::vect()
 
+          # Crop MODIS data file to site k's buffer.
           modis_clip <- terra::crop(modis, tmp)
 
+          # Use landscapemetrics::calculate_lsm() to calculate the proportion
+          # of each land cover type present in the cropped raster ("pland").
           modis_pland <- landscapemetrics::calculate_lsm(
             modis_clip,
             metric = "pland"
           )
 
+          # Loop through each land cover type present in the cropped raster
+          # and append proportion at site k in the appropriate year to input
+          # data. Create parseable column names using names for each
+          # class listed above.
           for (l in modis_pland$class) {
             data[
               data$SurveyAreaIdentifier == k &
@@ -1683,15 +2082,21 @@ landcover_extract <- function(
               )
             ] <- modis_pland$value[modis_pland$class == l]
           }
-          
+
+          # Check whether any land cover classes were never in the cropped
+          # raster. These are true zeros, but would be left out otherwise.
+          # Add these columns in with 0 values.
           missing_cols <- paste0(index, "_", modis.classes[[i]]$name)[
             !(paste0(index, "_", modis.classes[[i]]$name) %in% names(data))
           ]
-          
-          for(l in missing_cols) {
-            data[,l] <- 0
+
+          for (l in missing_cols) {
+            data[, l] <- 0
           }
 
+          # Replace NAs present in columns for land cover classes that were
+          # found at some sites but not others with the true zeros they
+          # represent.
           for (l in paste0(index, "_", modis.classes[[i]]$name)) {
             data[
               is.na(data[, l] %>% sf::st_drop_geometry()) &
@@ -1699,18 +2104,28 @@ landcover_extract <- function(
               l
             ] <- 0
           }
-          
-          data <- data[,c(grep(index, names(data), value = TRUE, invert = TRUE),
-                          paste0(index, "_", modis.classes[[i]]$name))]
+
+          # Reorder columns to match class order provided in MODIS
+          # documentation.
+          data <- data[, c(
+            grep(index, names(data), value = TRUE, invert = TRUE),
+            paste0(index, "_", modis.classes[[i]]$name)
+          )]
         } else {
+          # Create temporary object containing only the point for site k.
           tmp <- data %>%
             filter(SurveyAreaIdentifier == k) %>%
             select(SurveyAreaIdentifier, geometry) %>%
             distinct() %>%
             sf::st_transform(terra::crs(modis))
 
+          # Extract point value from MODIS raster. It appears to be possible
+          # that a point falls such that it extracts from two raster tiles,
+          # so handle that possibility below.
           extr_table <- terra::extract(modis, tmp, fun = unique)[, index]
 
+          # Whether only a single value was extracted (class == "integer") or
+          # multiple values (else) prepare to pass to input data.
           if (class(extr_table) == "integer") {
             extr_table <- extr_table %>%
               as.data.frame()
@@ -1736,6 +2151,9 @@ landcover_extract <- function(
             )
           }
 
+          # Join extracted value to input data. If multiple values were
+          # extracted, join the first value in extr_table and warn the user
+          # about potential values so they can adjust manually.
           tryCatch(
             data[
               data$SurveyAreaIdentifier == k &
@@ -1749,7 +2167,10 @@ landcover_extract <- function(
             warning = function(w) {
               if (
                 conditionMessage(w) ==
-                  "longer object length is not a multiple of shorter object length"
+                  paste0(
+                    "longer object length is not a multiple of shorter",
+                    "object length"
+                  )
               ) {
                 warning(
                   paste0(
@@ -1768,7 +2189,8 @@ landcover_extract <- function(
                     ]),
                     "` but possible values were `",
                     stringr::str_flatten(extr_table$name, collapse = "`, `"),
-                    "`. Please examine to choose desired output and replace if necessary."
+                    "`. Please examine to choose desired output and replace if",
+                    " necessary."
                   ),
                   call. = FALSE
                 )
@@ -1782,12 +2204,14 @@ landcover_extract <- function(
     }
   }
 
+  # Check if attributes were found and stored from input data. If they were
+  # found reattach.
   if (exists("attrs")) {
     # Reattach attributes
-
     attributes(data)[names(attrs)] <- attrs
   }
 
+  # Reinstate user's specified column names.
   if (!is.null(site_name)) {
     names(data)[names(data) == "SurveyAreaIdentifier"] <- site_name
   }
@@ -1796,6 +2220,7 @@ landcover_extract <- function(
     names(data)[names(data) == "survey_year"] <- date_year
   }
 
+  # If requested, remove MODIS data files.
   if (retain == FALSE) {
     message(paste0(
       "[MODIS Landcover Extraction] extraction complete. Removing files."
@@ -1804,22 +2229,34 @@ landcover_extract <- function(
     file.remove(modis.files$filename)
   }
 
+  # Return input data with appended land cover columns.
   return(data)
 }
 
 ########################### VEGETATION FUNCTIONS ###############################
 
+# Function for downloading MODIS MOD13A1 data from NASA EarthData. Wrapper for
+# luna::getNASA().
 vegetation_download <- function(
   data,
-  ed_email = NULL,
-  site_name = NULL,
-  date_year = NULL,
-  date_month = NULL,
-  date_day = NULL,
-  dl_path = NULL
+  ed_email = NULL, # users' EarthData account email address.
+  site_name = NULL, # optional argument to provide column name containing site
+  # names. Default is assumed to be the BMDE column 'SurveyAreaIdentifier'. Can
+  # be left NULL and still function properly if originally specified in a call
+  # to data_fmt().
+  date_year = NULL, # optional argument to provide column name containing year
+  # data. Default is assumed to be the BMDE column 'survey_year'. Can
+  # be left NULL and still function properly if originally specified in a call
+  # to data_fmt().
+  date_month = NULL, # optional argument to provide column name containing month
+  # data. Default is assumed to be the BMDE column 'survey_month'
+  date_day = NULL, # optional argument to provide column name containing day
+  # data. Default is assumed to be the BMDE column 'survey_day'.
+  dl_path = NULL # optional argument to provide path to download data to. By
+  # default, data is downloaded to a subfolder 'modis/' in the working
+  # directory.
 ) {
   # Check packages
-
   have_pkg_check(c(
     "askpass",
     "stringr",
@@ -1831,13 +2268,21 @@ vegetation_download <- function(
     "lubridate"
   ))
 
-  if (is.null(ed_email) | is.null(ed_password)) {
+  # Check that an EarthData account email has been provided. If not, return
+  # error.
+  if (is.null(ed_email)) {
     stop(
-      "[MODIS NDVI/EVI Download] MODIS data requested but Earthdata system login information not supplied. Please register at https://urs.earthdata.nasa.gov/users/new and supply using `ed_email` and `ed_password` parameters.",
+      "[MODIS NDVI/EVI Download] MODIS data requested but Earthdata system",
+      " login information not supplied. Please register at",
+      " https://urs.earthdata.nasa.gov/users/new and supply using `ed_email`",
+      " argument.",
       call. = FALSE
     )
   }
-  
+
+  # Check whether an EarthData password exists in the environment (is specified
+  # earlier in the nc_covariates() workflow), and if not, request using
+  # askpass::askpass().
   if (!exists("ed_password")) {
     ed_password <- askpass::askpass(
       prompt = paste0(
@@ -1845,11 +2290,14 @@ vegetation_download <- function(
         "EarthData user '",
         ed_email,
         "'."
-      ))
+      )
+    )
   }
 
+  # Check data is in the desired format.
   input_fmt <- covariate_fmt_check(data)
 
+  # If not an sf or terra object, return error and point towards data_fmt().
   if (input_fmt$type == "data.frame") {
     stop(
       "[MODIS NDVI/EVI Download] downloading requires an sf or terra object as input in this workflow. Consider using `data_fmt` to conform data first.",
@@ -1857,9 +2305,9 @@ vegetation_download <- function(
     )
   }
 
-  # Check that all specified column names are present in the data
-
-  # Check attributes for specified column names if not specified in args.
+  # Check whether information on alternate column names has been stored
+  # in the attributes by data_fmt(). However, prioritize alternate column names
+  # specified in the current call.
   if (is.null(site_name) & !is.null(attr(data, "site_name"))) {
     site_name <- attr(data, "site_name")
   }
@@ -1876,12 +2324,20 @@ vegetation_download <- function(
     date_day <- attr(data, "date_day")
   }
 
+  # Check that all specified column names are present in the data.
+
+  # Gather all potentially specified columns.
   specified_cols <- c(site_name, date_year, date_month, date_day)
 
+  # Remove any that haven't been specified.
   specified_cols <- specified_cols[!is.null(specified_cols)]
 
   data_cols <- names(data)
 
+  # Compare to columns present in data. Return error if any specified columns
+  # are not present. 'if' wrapper needed for when alternate column names exist
+  # in the attributes of the data, but conversion of those columns to
+  # standardized names has already taken place in data_fmt().
   if (
     !(all(specified_cols %in% data_cols)) &
       (!("SurveyAreaIdentifier" %in% data_cols) |
@@ -1894,11 +2350,14 @@ vegetation_download <- function(
       stringr::str_flatten_comma(specified_cols[
         !(specified_cols %in% data_cols)
       ]),
-      ". Use arguments to specify alternate column names if using data that diverges from naturecounts default column names.",
+      ". Use arguments to specify alternate column names if using data that",
+      " diverges from naturecounts default column names.",
       call. = FALSE
     )
   }
 
+  # Conform specified columns to naturecounts default column names. Calls to
+  # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
     data <- dplyr::rename(
       `if`(input_fmt$type == "sf", sf::st_sf(data), data),
@@ -1917,76 +2376,91 @@ vegetation_download <- function(
 
   data$survey_year <- as.numeric(data$survey_year)
 
-  if (!is.null(date_month) & !("survey_month" %in% data_cols)) {
+  if (!is.null(date_month)) {
     data <- dplyr::rename(
       `if`(input_fmt$type == "sf", sf::st_sf(data), data),
       survey_month = !!rlang::sym(date_month)
     )
   }
-  
+
+  # Use month_check() to validate month data.
   month_corr <- c()
-  
+
   for (i in 1:length(data$survey_month)) {
     month_corr[i] <- month_check(data$survey_month[i])
   }
-  
+
   data$survey_month <- month_corr
 
-  data$survey_month <- as.numeric(data$survey_month)
-
-  if (!is.null(date_day) & !("survey_day" %in% data_cols)) {
+  if (!is.null(date_day)) {
     data <- dplyr::rename(
       `if`(input_fmt$type == "sf", sf::st_sf(data), data),
       survey_day = !!rlang::sym(date_day)
     )
   }
-  
+
+  # Use dom_check() to validate day data.
   for (i in data$survey_day) {
     dom_check(i)
   }
 
-  data$survey_day <- as.numeric(data$survey_day)
-
+  # Create area of interest polygon from provided sf object.
   if (input_fmt$type == "sf") {
+    # Check whether sf object is buffered or not to determine extraction
+    # procedure down the line.
     buffered <- ifelse(input_fmt$geometry == "POINT", FALSE, TRUE)
 
+    # Store original CRS so data can be returned as provided.
     orig_crs <- terra::crs(data)
 
+    # Convert to CRS used in this workflow if not already in that CRS, create
+    # bounding box polygon with generous buffer to ensure data isn't missed.
     if (!(orig_crs == terra::crs("ESRI:102001"))) {
       study_area <- sf::st_bbox(data) %>%
         sf::st_as_sfc() %>%
         sf::st_transform("ESRI:102001") %>%
-        sf::st_buffer(20000) %>% # might have to fiddle with this for extreme edge cases where someone buffers points by a huge distance
+        sf::st_buffer(20000) %>% # Arbitrarily high number selected (20km).
+        # Maybe unnecessary, could reduce download size.
         terra::vect()
     } else {
       study_area <- sf::st_bbox(data) %>%
         sf::st_as_sfc() %>%
-        sf::st_buffer(20000) %>% # might have to fiddle with this for extreme edge cases where someone buffers points by a huge distance
+        sf::st_buffer(20000) %>% # # Arbitrarily high number selected (20km).
+        # Maybe unnecessary, could reduce download size.
         terra::vect()
     }
   }
 
+  # Create area of interest polygon from provided terra object.
   if (input_fmt$type == "terra") {
+    # Check whether terra object is buffered or not to determine extraction
+    # procedure down the line.
     buffered <- ifelse(input_fmt$geometry == "points", FALSE, TRUE)
 
+    # Store original CRS so data can be returned as provided.
     orig_crs <- terra::crs(data)
 
+    # Convert to CRS used in this workflow if not already in that CRS, create
+    # bounding box polygon with generous buffer to ensure data isn't missed.
     if (!(orig_crs == terra::crs("ESRI:102001"))) {
       study_area <- terra::ext(data) %>%
         terra::vect(crs = orig_crs) %>%
         terra::project("ESRI:102001") %>%
-        terra::buffer(20000)
+        terra::buffer(20000)# Arbitrarily high number selected (20km).
+      # Maybe unnecessary, could reduce download size.
     } else {
       study_area <- terra::ext(data) %>%
         terra::vect(crs = orig_crs) %>%
-        terra::buffer(20000)
+        terra::buffer(20000)# Arbitrarily high number selected (20km).
+      # Maybe unnecessary, could reduce download size.
     }
 
-    data <- sf::st_as_sf(data) # Maybe down the line write full process out in terra for terra data.
+    # Convert to sf object for use in workflow.
+    data <- sf::st_as_sf(data) # Maybe down the line write full process out in 
+    # terra for terra data.
   }
 
-  # Remove any observations missing year, month, or day data.
-
+  # Remove any observations missing year, month, or day data. Warn.
   if (
     TRUE %in%
       is.na(data$survey_year) |
@@ -1994,7 +2468,9 @@ vegetation_download <- function(
       TRUE %in% is.na(data$survey_day)
   ) {
     warning(
-      "[MODIS NDVI/EVI Download] missing date data detected. Complete year, month, and day data is needed for data download. Observations missing date data will be dropped.",
+      "[MODIS NDVI/EVI Download] missing date data detected. Complete year,",
+      " month, and day data is needed for data download. Observations missing",
+      " date data will be dropped.",
       call. = FALSE
     )
 
@@ -2006,6 +2482,7 @@ vegetation_download <- function(
       )
   }
 
+  # Create download path if it doesn't already exist.
   if (is.null(dl_path) & !dir.exists("./modis/MOD13A1")) {
     dir.create("./modis/MOD13A1", recursive = T)
   }
@@ -2014,9 +2491,17 @@ vegetation_download <- function(
     dir.create(paste0(dl_path, "/modis/MOD13A1"), recursive = T)
   }
 
+  # In first iteration of loop, fetch number of files to download to warn
+  # user as the 16-day resolution of this data can result in large file batches
+  # by setting download = FALSE in luna::getNASA().
   for (i in c(FALSE, TRUE)) {
+    # Open list to store filenames.
     modis.files <- list()
 
+    # Make API call using luna::getNASA() fetching all data between the
+    # first day of the first month surveyed in the first survey year to the 
+    # last day of the last month surveyed in the first survey year. If data for 
+    # that year is not available, skip and warn.
     tryCatch(
       modis.files[[as.character(min(data$survey_year))]] <- luna::getNASA(
         product = "MOD13A1",
@@ -2050,7 +2535,7 @@ vegetation_download <- function(
             )
           )
         ),
-        aoi = project(study_area, "epsg:4326"),
+        aoi = terra::project(study_area, "epsg:4326"),
         download = i,
         overwrite = FALSE,
         path = ifelse(
@@ -2079,8 +2564,7 @@ vegetation_download <- function(
       }
     )
 
-    # Will need a way to generalize month formatting
-
+    # Loop through remaining survey years and repeat process.
     for (j in sort(unique(data$survey_year))[
       2:length(unique(data$survey_year))
     ]) {
@@ -2114,7 +2598,7 @@ vegetation_download <- function(
               )
             )
           ),
-          aoi = project(study_area, "epsg:4326"),
+          aoi = terra::project(study_area, "epsg:4326"),
           download = i,
           overwrite = FALSE,
           path = ifelse(
@@ -2144,8 +2628,11 @@ vegetation_download <- function(
       )
     }
 
+    # Convert list to a flat vector.
     modis.files <- unlist(modis.files, use.names = F)
 
+    # On first iteration send message about expected number of files to
+    # download.
     if (i == FALSE) {
       message(paste0(
         "[MODIS NDVI/EVI Download] data products are at a 16 day resolution, resulting in ",
@@ -2155,9 +2642,11 @@ vegetation_download <- function(
     }
   }
 
+  # Return character vector of filepaths to downloaded files.
   return(modis.files)
 }
 
+############################ START HERE ########################################
 vegetation_extract <- function(
   data,
   covariates = "modis_ndvi",
@@ -2291,14 +2780,14 @@ vegetation_extract <- function(
       survey_month = !!rlang::sym(date_month)
     )
   }
-  
+
   month_corr <- c()
-  
+
   for (i in 1:length(data$survey_month)) {
     month_corr[i] <- month_check(data$survey_month[i])
   }
-    
-    data$survey_month <- month_corr
+
+  data$survey_month <- month_corr
 
   data$survey_month <- as.numeric(data$survey_month)
 
@@ -2308,7 +2797,7 @@ vegetation_extract <- function(
       survey_day = !!rlang::sym(date_day)
     )
   }
-  
+
   for (i in data$survey_day) {
     dom_check(i)
   }
@@ -3230,13 +3719,13 @@ worldclim_extract <- function(
       survey_month = !!rlang::sym(date_month)
     )
   }
-  
+
   month_corr <- c()
-  
+
   for (i in 1:length(data$survey_month)) {
     month_corr[i] <- month_check(data$survey_month[i])
   }
-  
+
   data$survey_month <- month_corr
 
   data$survey_month <- as.numeric(data$survey_month)
@@ -4081,7 +4570,7 @@ daymet_download <- function(
       call. = FALSE
     )
   }
-  
+
   if (!exists("ed_password")) {
     ed_password <- askpass::askpass(
       prompt = paste0(
@@ -4089,7 +4578,8 @@ daymet_download <- function(
         "EarthData user '",
         ed_username,
         "'."
-      ))
+      )
+    )
   }
 
   input_fmt <- covariate_fmt_check(data)
@@ -4167,13 +4657,13 @@ daymet_download <- function(
       survey_month = !!rlang::sym(date_month)
     )
   }
-  
+
   month_corr <- c()
-  
+
   for (i in 1:length(data$survey_month)) {
     month_corr[i] <- month_check(data$survey_month[i])
   }
-  
+
   data$survey_month <- month_corr
 
   data$survey_month <- as.numeric(data$survey_month)
@@ -4184,7 +4674,7 @@ daymet_download <- function(
       survey_day = !!rlang::sym(date_day)
     )
   }
-  
+
   for (i in data$survey_day) {
     dom_check(i)
   }
@@ -4567,13 +5057,13 @@ daymet_extract <- function(
       survey_month = !!rlang::sym(date_month)
     )
   }
-  
+
   month_corr <- c()
-  
+
   for (i in 1:length(data$survey_month)) {
     month_corr[i] <- month_check(data$survey_month[i])
   }
-  
+
   data$survey_month <- month_corr
 
   data$survey_month <- as.numeric(data$survey_month)
@@ -4584,7 +5074,7 @@ daymet_extract <- function(
       survey_day = !!rlang::sym(date_day)
     )
   }
-  
+
   for (i in data$survey_day) {
     dom_check(i)
   }
@@ -4939,7 +5429,7 @@ nc_covariates_merge <- function(
     "dplyr",
     "tidyterra"
   ))
-  
+
   input_fmt <- covariate_fmt_check(original_data)
 
   if (input_fmt$type == "data.frame") {
@@ -5449,28 +5939,33 @@ nc_covariates <- function(
   merge = TRUE
 ) {
   have_pkg_check("askpass")
-  
+
   if (merge == TRUE) {
     original_data <- data
   }
-  
-  if("modis_lctype1" %in% covariates |
-     "modis_lctype2" %in% covariates |
-     "modis_lctype3" %in% covariates |
-     "modis_lctype4" %in% covariates |
-     "modis_lctype5" %in% covariates | 
-     "modis_ndvi" %in% covariates | 
-     "modis_evi" %in% covariates |
-     length(grep("daymet_", covariates)) > 0) {
-    
-    if(length(grep("daymet_", covariates)) > 0) {
-      if("modis_lctype1" %in% covariates |
-         "modis_lctype2" %in% covariates |
-         "modis_lctype3" %in% covariates |
-         "modis_lctype4" %in% covariates |
-         "modis_lctype5" %in% covariates | 
-         "modis_ndvi" %in% covariates | 
-         "modis_evi" %in% covariates) {
+
+  if (
+    "modis_lctype1" %in%
+      covariates |
+      "modis_lctype2" %in% covariates |
+      "modis_lctype3" %in% covariates |
+      "modis_lctype4" %in% covariates |
+      "modis_lctype5" %in% covariates |
+      "modis_ndvi" %in% covariates |
+      "modis_evi" %in% covariates |
+      length(grep("daymet_", covariates)) > 0
+  ) {
+    if (length(grep("daymet_", covariates)) > 0) {
+      if (
+        "modis_lctype1" %in%
+          covariates |
+          "modis_lctype2" %in% covariates |
+          "modis_lctype3" %in% covariates |
+          "modis_lctype4" %in% covariates |
+          "modis_lctype5" %in% covariates |
+          "modis_ndvi" %in% covariates |
+          "modis_evi" %in% covariates
+      ) {
         ed_password <- askpass::askpass(
           prompt = paste0(
             "Please enter password for ",
@@ -5479,7 +5974,8 @@ nc_covariates <- function(
             "' [, ",
             ed_email,
             "]."
-          ))
+          )
+        )
       } else {
         ed_password <- askpass::askpass(
           prompt = paste0(
@@ -5487,7 +5983,8 @@ nc_covariates <- function(
             "EarthData user '",
             ed_username,
             "'."
-          ))
+          )
+        )
       }
     } else {
       ed_password <- askpass::askpass(
@@ -5496,7 +5993,8 @@ nc_covariates <- function(
           "EarthData user '",
           ed_email,
           "'."
-        ))
+        )
+      )
     }
   }
 
