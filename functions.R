@@ -1462,11 +1462,11 @@ landcover_download <- function(
       call. = FALSE
     )
   }
-
+  
   # Check whether an EarthData password exists in the environment (is specified
   # earlier in the nc_covariates() workflow), and if not, request using
   # askpass::askpass().
-  if (!exists("ed_password")) {
+  if (is.null(parent.frame()$ed_password)) {
     ed_password <- askpass::askpass(
       prompt = paste0(
         "Please enter password for ",
@@ -1475,6 +1475,8 @@ landcover_download <- function(
         "'."
       )
     )
+  } else {
+    ed_password <- parent.frame()$ed_password
   }
 
   # Check data is in the desired format.
@@ -2275,7 +2277,7 @@ vegetation_download <- function(
   # Check whether an EarthData password exists in the environment (is specified
   # earlier in the nc_covariates() workflow), and if not, request using
   # askpass::askpass().
-  if (!exists("ed_password")) {
+  if (is.null(parent.frame()$ed_password)) {
     ed_password <- askpass::askpass(
       prompt = paste0(
         "Please enter password for ",
@@ -2284,6 +2286,8 @@ vegetation_download <- function(
         "'."
       )
     )
+  } else {
+    ed_password <- parent.frame()$ed_password
   }
 
   # Check data is in the desired format.
@@ -5027,7 +5031,7 @@ daymet_download <- function(
   # Check whether an EarthData password exists in the environment (is specified
   # earlier in the nc_covariates() workflow), and if not, request using
   # askpass::askpass().
-  if (!exists("ed_password")) {
+  if (is.null(parent.frame()$ed_password)) {
     ed_password <- askpass::askpass(
       prompt = paste0(
         "Please enter password for ",
@@ -5036,6 +5040,8 @@ daymet_download <- function(
         "'."
       )
     )
+  } else {
+    ed_password <- parent.frame()$ed_password
   }
 
   # Check data is in the desired format.
@@ -6748,7 +6754,6 @@ nc_covariates <- function(
       landcover_data <- landcover_download(
         data,
         ed_email = ed_email,
-        ed_password = ed_password,
         site_name = site_name,
         date_year = date_year,
         dl_path = dl_path
@@ -6769,7 +6774,6 @@ nc_covariates <- function(
       vegetation_data <- vegetation_download(
         data,
         ed_email = ed_email,
-        ed_password = ed_password,
         site_name = site_name,
         date_year = date_year,
         date_month = date_month,
@@ -6809,6 +6813,7 @@ nc_covariates <- function(
     # If requested, download and extract WorldClim data.
     if (length(grep("worldclim_", covariates)) > 0) {
       worldclim_data <- worldclim_download(
+        data,
         covariates = covariates,
         countries = worldclim_countries,
         res = worldclim_res,
@@ -6858,7 +6863,6 @@ nc_covariates <- function(
       date_month = date_month,
       date_day = date_day,
       ed_username = ed_username,
-      ed_password = ed_password,
       daymet_transfer = daymet_transfer,
       dl_path = dl_path
     )
