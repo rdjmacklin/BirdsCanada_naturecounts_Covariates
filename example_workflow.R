@@ -38,8 +38,7 @@ modis_files <- landcover_download(
 
 landcover_data <- landcover_extract(
   landcover_data,
-  landcover_files = modis_files,
-  covariates = "modis_lctype1"
+  landcover_files = modis_files
 )
 
 # Demonstrate what happens when a site is out of range

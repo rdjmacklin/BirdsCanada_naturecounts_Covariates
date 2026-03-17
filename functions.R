@@ -376,7 +376,7 @@ covariate_fmt_check <- function(data) {
   have_pkg_check(c("sf", "terra"))
 
   # Check if input is a simple features object.
-  if ("sf" %in% class(data)) {
+  if (inherits(data, "sf")) {
     # Store data type.
     data_type <- "sf"
 
@@ -408,7 +408,7 @@ covariate_fmt_check <- function(data) {
     return(list(type = data_type, geometry = data_geometry))
 
     # Check if input is a terra SpatVector.
-  } else if ("SpatVector" %in% class(data)) {
+  } else if (inherits(data, "SpatVector")) {
     # Store data type.
     data_type <- "terra"
 
@@ -474,12 +474,7 @@ data_fmt <- function(
   have_pkg_check(c(
     "sf",
     "terra",
-    "stringr",
-    "rlang",
-    "dplyr",
-    "lubridate",
-    "tidyterra",
-    "tidyselect"
+    "tidyterra"
   ))
 
   # Check data type - we need either a dataframe, sf points object, sf polygon,
@@ -707,10 +702,10 @@ data_fmt <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      SurveyAreaIdentifier = !!rlang::sym(site_name)
-    )
+    if(input_fmt$type == "sf"){
+      data <- sf::st_sf(data)
+    }
+    data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
   data$SurveyAreaIdentifier <- as.character(data$SurveyAreaIdentifier)
@@ -723,10 +718,11 @@ data_fmt <- function(
         data <- dplyr::select(data, -longitude)
       }
 
-      data <- dplyr::rename(
-        `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-        longitude = !!rlang::sym(coord_lon)
-      )
+      if(input_fmt$type == "sf") {
+        data <- sf::st_sf(data)
+      }
+      
+      data <- dplyr::rename(data, "longitude" = !!coord_lon)
     }
 
     data$longitude <- as.numeric(data$longitude)
@@ -736,27 +732,31 @@ data_fmt <- function(
       if ("latitude" %in% names(data) & !(coord_lat == "latitude")) {
         data <- dplyr::select(data, -latitude)
       }
-      data <- dplyr::rename(
-        `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-        latitude = !!rlang::sym(coord_lat)
-      )
+      
+      if(input_fmt$type == "sf") {
+        data <- sf::st_sf(data)
+      }
+      
+      data <- dplyr::rename(data, "latitude" = !!coord_lat)
     }
 
     data$latitude <- as.numeric(data$latitude)
   }
 
   if (!is.null(date_year)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      survey_year = !!rlang::sym(date_year)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "survey_year" = !!date_year)
   }
 
   if (!is.null(date_month)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      survey_month = !!rlang::sym(date_month)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "survey_month" = !!date_month)
   }
 
   # Use month_check() to validate month data. 'if' wrapper needed to handle
@@ -773,10 +773,11 @@ data_fmt <- function(
   }
 
   if (!is.null(date_day)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      survey_day = !!rlang::sym(date_day)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "survey_day" = !!date_day)
   }
 
   # Use dom_check() to validate day data. 'if' wrapper needed to handle cases
@@ -792,7 +793,7 @@ data_fmt <- function(
   # day columns.
   if (!is.null(date_lubridate)) {
     # Standardize date column name
-    data <- dplyr::mutate(data, date = !!rlang::sym(date_lubridate))
+    data <- dplyr::rename(data, "date" = !!date_lubridate)
 
     # Check that provided lubridate data is a date object. If not, return error.
     if (!lubridate::is.Date(data$date)) {
@@ -872,7 +873,7 @@ data_fmt <- function(
   # not provided, see above), make year, month and day columns.
   if (!is.null(date_ordinal)) {
     # Standardize ordinal date column name
-    data <- dplyr::mutate(data, doy = !!rlang::sym(date_ordinal))
+    data <- dplyr::rename(data, "doy" = !!date_ordinal)
 
     # Check that year data has been provided alongside ordinal day data as this
     # is needed to convert to calendar date. If not, return error.
@@ -1427,7 +1428,7 @@ data_buff <- function(
 # luna::getNASA().
 landcover_download <- function(
   data,
-  ed_email = NULL, # users' EarthData account email address.
+  ed_email, # users' EarthData account email address.
   site_name = NULL, # optional argument to provide column name containing site
   # names. Default is assumed to be the BMDE column 'SurveyAreaIdentifier'. Can
   # be left NULL and still function properly if originally specified in a call
@@ -1442,18 +1443,14 @@ landcover_download <- function(
 ) {
   # Check packages
   have_pkg_check(c(
-    "askpass",
-    "stringr",
-    "dplyr",
     "sf",
-    "rlang",
     "terra",
     "luna"
   ))
 
   # Check that an EarthData account email has been provided. If not, return
   # error.
-  if (is.null(ed_email)) {
+  if (missing(ed_email)) {
     stop(
       "[MODIS Landcover Download] MODIS Landcover data requested but Earthdata",
       " system login information not supplied. Please register at",
@@ -1537,19 +1534,21 @@ landcover_download <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier") %in% data_cols) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      SurveyAreaIdentifier = !!rlang::sym(site_name)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
   data$SurveyAreaIdentifier <- as.character(data$SurveyAreaIdentifier)
 
   if (!is.null(date_year) & !("survey_year") %in% data_cols) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      survey_year = !!rlang::sym(date_year)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "survey_year" = !!date_year)
   }
 
   data$survey_year <- as.numeric(data$survey_year)
@@ -1604,17 +1603,17 @@ landcover_download <- function(
 
   # Create download path if it doesn't already exist.
   if (is.null(dl_path) & !dir.exists("./modis/MCD12Q1")) {
-    dir.create("./modis/MCD12Q1", recursive = T)
+    dir.create("./modis/MCD12Q1", recursive = TRUE)
   }
 
   if (!is.null(dl_path) & !dir.exists(paste0(dl_path, "/modis/MCD12Q1"))) {
-    dir.create(paste0(dl_path, "/modis/MCD12Q1"), recursive = T)
+    dir.create(paste0(dl_path, "/modis/MCD12Q1"), recursive = TRUE)
   }
 
   message("[MODIS Landcover Download] downloading data.")
 
   # Call to API using luna::getNASA()
-  modis.files <- luna::getNASA(
+  modis_files <- luna::getNASA(
     product = "MCD12Q1",
     start = paste0(min(data$survey_year), "-01-01"), # Starting year
     end = paste0(max(data$survey_year), "-12-31"), # End year
@@ -1631,14 +1630,14 @@ landcover_download <- function(
   )
 
   # Return character vector of filepaths to downloaded files.
-  return(modis.files)
+  return(modis_files)
 }
 
 # Function to extract land cover data from provided MODIS MCD12Q1 data files.
 landcover_extract <- function(
   data,
   covariates = "modis_lctype1", # Other options listed in nc_covariate_table().
-  landcover_files = NULL, # Character vector of filepaths to downloaded files.
+  landcover_files, # Character vector of filepaths to downloaded files.
   site_name = NULL, # optional argument to provide column name containing site
   # names. Default is assumed to be the BMDE column 'SurveyAreaIdentifier'. Can
   # be left NULL and still function properly if originally specified in a call
@@ -1651,14 +1650,10 @@ landcover_extract <- function(
 ) {
   # Check packages
   have_pkg_check(c(
-    "stringr",
-    "dplyr",
     "sf",
-    "rlang",
     "luna",
     "terra",
-    "stats",
-    "landscapemetrics"
+    "stats"
   ))
 
   # Catch misspecified covariates. Return error if any exist.
@@ -1672,7 +1667,7 @@ landcover_extract <- function(
   }
 
   # If no landcover files are provided, return error.
-  if (is.null(landcover_files)) {
+  if (missing(landcover_files)) {
     stop(
       "[MODIS Landcover Extraction] no landcover files provided to extract from. Please provide a vector containing filepaths of all necessary MODIS files for your data. Data can be downloaded using landcover_download().",
       call. = FALSE
@@ -1756,19 +1751,21 @@ landcover_extract <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      SurveyAreaIdentifier = !!rlang::sym(site_name)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
   data$SurveyAreaIdentifier <- as.character(data$SurveyAreaIdentifier)
 
   if (!is.null(date_year) & !("survey_year" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      survey_year = !!rlang::sym(date_year)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "survey_year" = !!date_year)
   }
 
   data$survey_year <- as.numeric(data$survey_year)
@@ -1785,48 +1782,53 @@ landcover_extract <- function(
     # Convert to sf object for use in workflow.
     data <- sf::st_as_sf(data) # Maybe down the line write full process out in terra for terra data.
   }
+  
+  # If buffered, check for packages necessary in buffered workflow.
+  if(buffered == TRUE) {
+    have_pkg_check("landscapemetrics")
+  }
 
   # Parse dates stored in filenames of MODIS data files and append column to
   # filenames.
-  modis.files <- luna::modisDate(landcover_files)
-  modis.files <- cbind(
-    modis.files,
-    as.data.frame(luna::modisExtent(modis.files$filename))
+  modis_files <- luna::modisDate(landcover_files)
+  modis_files <- cbind(
+    modis_files,
+    as.data.frame(luna::modisExtent(modis_files$filename))
   )
 
-  modis.files$year <- as.numeric(modis.files$year)
+  modis_files$year <- as.numeric(modis_files$year)
 
   # Build object to use in matching sites to their respective MODIS data file.
-  modis.match <- data %>%
+  modis_match <- data %>%
     dplyr::select(SurveyAreaIdentifier, survey_year, geometry) %>%
-    sf::st_transform(terra::crs(terra::rast(modis.files$filename[1])))
+    sf::st_transform(terra::crs(terra::rast(modis_files$filename[1])))
 
   # If buffered, extract coordinates from centroids. Append coordinates.
   if (buffered == TRUE) {
     suppressWarnings(
-      modis.match <- cbind(
-        modis.match,
-        sf::st_coordinates(sf::st_centroid(modis.match))
+      modis_match <- cbind(
+        modis_match,
+        sf::st_coordinates(sf::st_centroid(modis_match))
       )
     )
   } else {
-    modis.match <- cbind(modis.match, sf::st_coordinates(modis.match))
+    modis_match <- cbind(modis_match, sf::st_coordinates(modis_match))
   }
 
   # Loop through years to check that all are represented in the MODIS data.
   # When requests are placed for data containing years not covered by MODIS,
   # nothing in the downloading process alerts the user to this. Warn here, and
   # use nearest year.
-  for (i in sort(unique(modis.match$survey_year))) {
-    if (!(i %in% modis.files$year)) {
+  for (i in sort(unique(modis_match$survey_year))) {
+    if (!(i %in% modis_files$year)) {
       warning(
         paste0(
           "[MODIS Landcover Extraction]: MODIS data not available for ",
           i,
           " - using data from nearest year (",
-          unique(modis.files$year)[which(
-            abs(i - unique(modis.files$year)) ==
-              min(abs(i - unique(modis.files$year)))
+          unique(modis_files$year)[which(
+            abs(i - unique(modis_files$year)) ==
+              min(abs(i - unique(modis_files$year)))
           )],
           ")."
         ),
@@ -1840,13 +1842,13 @@ landcover_extract <- function(
   out_of_range <- c()
 
   # Loop through each site-year combination and match to appropriate file.
-  for (i in unique(modis.match$SurveyAreaIdentifier)) {
-    for (j in unique(modis.match$survey_year[
-      modis.match$SurveyAreaIdentifier == i
+  for (i in unique(modis_match$SurveyAreaIdentifier)) {
+    for (j in unique(modis_match$survey_year[
+      modis_match$SurveyAreaIdentifier == i
     ])) {
       # Create temporary spatial object containing only the buffer for site i.
       tmp <- dplyr::filter(
-        modis.match,
+        modis_match,
         SurveyAreaIdentifier == i,
         survey_year == j
       ) %>%
@@ -1856,10 +1858,10 @@ landcover_extract <- function(
       # provided MODIS files. If not, warn and note site name. If not, proceed
       # with file-matching.
       if (
-        all(tmp$X > modis.files$xmax) |
-          all(tmp$X < modis.files$xmin) |
-          all(tmp$Y > modis.files$ymax) |
-          all(tmp$Y < modis.files$ymin)
+        all(tmp$X > modis_files$xmax) |
+          all(tmp$X < modis_files$xmin) |
+          all(tmp$Y > modis_files$ymax) |
+          all(tmp$Y < modis_files$ymin)
       ) {
         warning(
           "[MODIS Landcover Extraction] site ",
@@ -1875,33 +1877,33 @@ landcover_extract <- function(
         # MODIS if the data's year is outside MODIS coverage, or the data's
         # year, and the site's coordinates.
         suppressWarnings(
-          if (!(j %in% modis.files$year)) {
-            modis.match[
-              modis.match$SurveyAreaIdentifier == i &
-                modis.match$survey_year == j,
+          if (!(j %in% modis_files$year)) {
+            modis_match[
+              modis_match$SurveyAreaIdentifier == i &
+                modis_match$survey_year == j,
               "filename"
-            ] <- modis.files$filename[
-              modis.files$year ==
-                unique(modis.files$year)[which(
-                  abs(j - unique(modis.files$year)) ==
-                    abs(min(j - unique(modis.files$year)))
+            ] <- modis_files$filename[
+              modis_files$year ==
+                unique(modis_files$year)[which(
+                  abs(j - unique(modis_files$year)) ==
+                    abs(min(j - unique(modis_files$year)))
                 )] &
-                modis.files$xmin < tmp$X &
-                modis.files$xmax > tmp$X &
-                modis.files$ymin < tmp$Y &
-                modis.files$ymax > tmp$Y
+                modis_files$xmin < tmp$X &
+                modis_files$xmax > tmp$X &
+                modis_files$ymin < tmp$Y &
+                modis_files$ymax > tmp$Y
             ]
           } else {
-            modis.match[
-              modis.match$SurveyAreaIdentifier == i &
-                modis.match$survey_year == j,
+            modis_match[
+              modis_match$SurveyAreaIdentifier == i &
+                modis_match$survey_year == j,
               "filename"
-            ] <- modis.files$filename[
-              modis.files$year == tmp$survey_year &
-                modis.files$xmin < tmp$X &
-                modis.files$xmax > tmp$X &
-                modis.files$ymin < tmp$Y &
-                modis.files$ymax > tmp$Y
+            ] <- modis_files$filename[
+              modis_files$year == tmp$survey_year &
+                modis_files$xmin < tmp$X &
+                modis_files$xmax > tmp$X &
+                modis_files$ymin < tmp$Y &
+                modis_files$ymax > tmp$Y
             ]
           }
         )
@@ -1916,7 +1918,7 @@ landcover_extract <- function(
   # https://lpdaac.usgs.gov/documents/101/MCD12_User_Guide_V6.pdf where
   # class definitions are also available. NOTE: might be worth transcribing
   # these into an object within NatureCounts.
-  modis.classes <- list(
+  modis_classes <- list(
     modis_lctype1 = data.frame(
       class = c(1:17, 255),
       name = c(
@@ -2016,7 +2018,7 @@ landcover_extract <- function(
 
   # Open loop going through each requested land cover classification and
   # extracting.
-  for (i in grep("modis_lc", covariates, value = T)) {
+  for (i in grep("modis_lc", covariates, value = TRUE)) {
     # Parse covariate name for layer name used by MODIS data files.
     index <- gsub("modis_lct", "LC_T", i)
 
@@ -2027,11 +2029,11 @@ landcover_extract <- function(
     ))
 
     # Loop through each matched MODIS data file.
-    for (j in stats::na.omit(unique(modis.match$filename))) {
+    for (j in stats::na.omit(unique(modis_match$filename))) {
       # Create object with all sites that matched to file j.
       pts_to_fill <- data[
         data$SurveyAreaIdentifier %in%
-          modis.match$SurveyAreaIdentifier[modis.match$filename == j],
+          modis_match$SurveyAreaIdentifier[modis_match$filename == j],
       ]
 
       # Open the requested layer in file j.
@@ -2068,11 +2070,11 @@ landcover_extract <- function(
             data[
               data$SurveyAreaIdentifier == k &
                 data$survey_year %in%
-                  modis.match$survey_year[modis.match$filename == j],
+                  modis_match$survey_year[modis_match$filename == j],
               paste0(
                 index,
                 "_",
-                modis.classes[[i]]$name[modis.classes[[i]]$class == l]
+                modis_classes[[i]]$name[modis_classes[[i]]$class == l]
               )
             ] <- modis_pland$value[modis_pland$class == l]
           }
@@ -2080,8 +2082,8 @@ landcover_extract <- function(
           # Check whether any land cover classes were never in the cropped
           # raster. These are true zeros, but would be left out otherwise.
           # Add these columns in with 0 values.
-          missing_cols <- paste0(index, "_", modis.classes[[i]]$name)[
-            !(paste0(index, "_", modis.classes[[i]]$name) %in% names(data))
+          missing_cols <- paste0(index, "_", modis_classes[[i]]$name)[
+            !(paste0(index, "_", modis_classes[[i]]$name) %in% names(data))
           ]
 
           for (l in missing_cols) {
@@ -2091,7 +2093,7 @@ landcover_extract <- function(
           # Replace NAs present in columns for land cover classes that were
           # found at some sites but not others with the true zeros they
           # represent.
-          for (l in paste0(index, "_", modis.classes[[i]]$name)) {
+          for (l in paste0(index, "_", modis_classes[[i]]$name)) {
             data[
               is.na(data[, l] %>% sf::st_drop_geometry()) &
                 !(data$SurveyAreaIdentifier %in% out_of_range),
@@ -2103,7 +2105,7 @@ landcover_extract <- function(
           # documentation.
           data <- data[, c(
             grep(index, names(data), value = TRUE, invert = TRUE),
-            paste0(index, "_", modis.classes[[i]]$name)
+            paste0(index, "_", modis_classes[[i]]$name)
           )]
         } else {
           # Create temporary object containing only the point for site k.
@@ -2128,7 +2130,7 @@ landcover_extract <- function(
 
             extr_table <- dplyr::left_join(
               extr_table,
-              modis.classes[[i]],
+              modis_classes[[i]],
               by = "class"
             )
           } else {
@@ -2140,7 +2142,7 @@ landcover_extract <- function(
 
             extr_table <- dplyr::left_join(
               extr_table,
-              modis.classes[[i]],
+              modis_classes[[i]],
               by = "class"
             )
           }
@@ -2152,10 +2154,10 @@ landcover_extract <- function(
             data[
               data$SurveyAreaIdentifier == k &
                 data$survey_year %in%
-                  modis.match$survey_year[modis.match$filename == j],
+                  modis_match$survey_year[modis_match$filename == j],
               paste0(index, "_Class")
-            ] <- modis.classes[[i]]$name[
-              modis.classes[[i]]$class ==
+            ] <- modis_classes[[i]]$name[
+              modis_classes[[i]]$class ==
                 terra::extract(modis, tmp, fun = unique)[, index]
             ],
             warning = function(w) {
@@ -2173,12 +2175,12 @@ landcover_extract <- function(
                     ": Site ",
                     k,
                     " in year(s) ",
-                    stringr::str_flatten_comma(sort(unique(modis.match$survey_year[
-                      modis.match$filename == j
+                    stringr::str_flatten_comma(sort(unique(modis_match$survey_year[
+                      modis_match$filename == j
                     ]))),
                     " touches multiple cells. Extraction returned `",
-                    suppressWarnings(modis.classes[[i]]$name[
-                      modis.classes[[i]]$class ==
+                    suppressWarnings(modis_classes[[i]]$name[
+                      modis_classes[[i]]$class ==
                         terra::extract(modis, tmp, fun = unique)[, index]
                     ]),
                     "` but possible values were `",
@@ -2220,7 +2222,7 @@ landcover_extract <- function(
       "[MODIS Landcover Extraction] extraction complete. Removing files."
     ))
 
-    file.remove(modis.files$filename)
+    file.remove(modis_files$filename)
   }
 
   # Return input data with appended land cover columns.
@@ -2233,7 +2235,7 @@ landcover_extract <- function(
 # luna::getNASA().
 vegetation_download <- function(
   data,
-  ed_email = NULL, # users' EarthData account email address.
+  ed_email, # users' EarthData account email address.
   site_name = NULL, # optional argument to provide column name containing site
   # names. Default is assumed to be the BMDE column 'SurveyAreaIdentifier'. Can
   # be left NULL and still function properly if originally specified in a call
@@ -2252,19 +2254,14 @@ vegetation_download <- function(
 ) {
   # Check packages
   have_pkg_check(c(
-    "askpass",
-    "stringr",
-    "dplyr",
     "sf",
-    "rlang",
     "terra",
-    "luna",
-    "lubridate"
+    "luna"
   ))
 
   # Check that an EarthData account email has been provided. If not, return
   # error.
-  if (is.null(ed_email)) {
+  if (missing(ed_email)) {
     stop(
       "[MODIS NDVI/EVI Download] MODIS data requested but Earthdata system",
       " login information not supplied. Please register at",
@@ -2355,28 +2352,31 @@ vegetation_download <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      SurveyAreaIdentifier = !!rlang::sym(site_name)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
   data$SurveyAreaIdentifier <- as.character(data$SurveyAreaIdentifier)
 
   if (!is.null(date_year) & !("survey_year" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      survey_year = !!rlang::sym(date_year)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "survey_year" = !!date_year)
   }
 
   data$survey_year <- as.numeric(data$survey_year)
 
   if (!is.null(date_month)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      survey_month = !!rlang::sym(date_month)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "survey_month" = !!date_month)
   }
 
   # Use month_check() to validate month data.
@@ -2389,10 +2389,11 @@ vegetation_download <- function(
   data$survey_month <- month_corr
 
   if (!is.null(date_day)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      survey_day = !!rlang::sym(date_day)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "survey_day" = !!date_day)
   }
 
   # Use dom_check() to validate day data.
@@ -2472,11 +2473,11 @@ vegetation_download <- function(
 
   # Create download path if it doesn't already exist.
   if (is.null(dl_path) & !dir.exists("./modis/MOD13A1")) {
-    dir.create("./modis/MOD13A1", recursive = T)
+    dir.create("./modis/MOD13A1", recursive = TRUE)
   }
 
   if (!is.null(dl_path) & !dir.exists(paste0(dl_path, "/modis/MOD13A1"))) {
-    dir.create(paste0(dl_path, "/modis/MOD13A1"), recursive = T)
+    dir.create(paste0(dl_path, "/modis/MOD13A1"), recursive = TRUE)
   }
 
   # In first iteration of loop, fetch number of files to download to warn
@@ -2484,14 +2485,14 @@ vegetation_download <- function(
   # by setting download = FALSE in luna::getNASA().
   for (i in c(FALSE, TRUE)) {
     # Open list to store filenames.
-    modis.files <- list()
+    modis_files <- list()
 
     # Make API call using luna::getNASA() fetching all data between the
     # first day of the first month surveyed in the first survey year to the 
     # last day of the last month surveyed in the first survey year. If data for 
     # that year is not available, skip and warn.
     tryCatch(
-      modis.files[[as.character(min(data$survey_year))]] <- luna::getNASA(
+      modis_files[[as.character(min(data$survey_year))]] <- luna::getNASA(
         product = "MOD13A1",
         start = paste0(
           min(data$survey_year),
@@ -2557,7 +2558,7 @@ vegetation_download <- function(
       2:length(unique(data$survey_year))
     ]) {
       tryCatch(
-        modis.files[[as.character(j)]] <- luna::getNASA(
+        modis_files[[as.character(j)]] <- luna::getNASA(
           product = "MOD13A1",
           start = paste0(
             j,
@@ -2617,21 +2618,21 @@ vegetation_download <- function(
     }
 
     # Convert list to a flat vector.
-    modis.files <- unlist(modis.files, use.names = F)
+    modis_files <- unlist(modis_files, use.names = FALSE)
 
     # On first iteration send message about expected number of files to
     # download.
     if (i == FALSE) {
       message(paste0(
         "[MODIS NDVI/EVI Download] data products are at a 16 day resolution, resulting in ",
-        length(modis.files),
+        length(modis_files),
         " files to download for your data. This may take some time."
       ))
     }
   }
 
   # Return character vector of filepaths to downloaded files.
-  return(modis.files)
+  return(modis_files)
 }
 
 
@@ -2639,7 +2640,7 @@ vegetation_download <- function(
 vegetation_extract <- function(
   data,
   covariates = "modis_ndvi", # Other options listed in nc_covariate_table().
-  vegetation_files = NULL, # Character vector of filepaths to downloaded files.
+  vegetation_files, # Character vector of filepaths to downloaded files.
   site_name = NULL, # optional argument to provide column name containing site
   # names. Default is assumed to be the BMDE column 'SurveyAreaIdentifier'. Can
   # be left NULL and still function properly if originally specified in a call
@@ -2660,14 +2661,9 @@ vegetation_extract <- function(
 ) {
   # Check packages
   have_pkg_check(c(
-    "stringr",
-    "dplyr",
     "sf",
-    "rlang",
     "luna",
-    "lubridate",
-    "terra",
-    "exactextractr"
+    "terra"
   ))
 
   # Catch misspecified covariates. Return error if any exist.
@@ -2679,7 +2675,7 @@ vegetation_extract <- function(
   }
 
   # If no vegetation files are provided, return error.
-  if (is.null(vegetation_files)) {
+  if (missing(vegetation_files)) {
     stop(
       "[MODIS NDVI/EVI Extraction] no vegetation files provided to extract from. Please provide a vector containing filepaths of all necessary MODIS files for your data. Data can be downloaded using landcover_download.",
       call. = FALSE
@@ -2773,28 +2769,31 @@ vegetation_extract <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      SurveyAreaIdentifier = !!rlang::sym(site_name)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
   data$SurveyAreaIdentifier <- as.character(data$SurveyAreaIdentifier)
 
   if (!is.null(date_year) & !("survey_year" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      survey_year = !!rlang::sym(date_year)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "survey_year" = !!date_year)
   }
 
   data$survey_year <- as.numeric(data$survey_year)
 
   if (!is.null(date_month) & !("survey_month" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      survey_month = !!rlang::sym(date_month)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "survey_month" = !!date_month)
   }
 
   month_corr <- c()
@@ -2809,10 +2808,11 @@ vegetation_extract <- function(
   data$survey_month <- as.numeric(data$survey_month)
 
   if (!is.null(date_day) & !("survey_day" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      survey_day = !!rlang::sym(date_day)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "survey_day" = !!date_day)
   }
 
   # Use dom_check() to validate day data.
@@ -2836,6 +2836,11 @@ vegetation_extract <- function(
     # Convert to sf object for use in workflow.
     data <- sf::st_as_sf(data) # Maybe down the line write full process out in 
     # terra for terra data.
+  }
+  
+  # If buffered, check for packages necessary in buffered workflow.
+  if(buffered == TRUE) {
+    have_pkg_check("exactextractr")
   }
 
   # Remove any observations missing year, month, or day data.
@@ -2863,22 +2868,22 @@ vegetation_extract <- function(
   
   # Parse dates stored in filenames of MODIS data files and append column to
   # filenames.
-  modis.files <- luna::modisDate(vegetation_files)
+  modis_files <- luna::modisDate(vegetation_files)
 
   # As each files contains data covering a 16 day period, create an end date of
   # each files coverage.
-  modis.files$enddate <- modis.files$date + 16
+  modis_files$enddate <- modis_files$date + 16
 
-  modis.files$year <- as.numeric(modis.files$year)
-  modis.files$month <- as.numeric(modis.files$month)
-  modis.files$day <- as.numeric(modis.files$day)
+  modis_files$year <- as.numeric(modis_files$year)
+  modis_files$month <- as.numeric(modis_files$month)
+  modis_files$day <- as.numeric(modis_files$day)
 
-  modis.files$endyear <- lubridate::year(modis.files$enddate)
-  modis.files$endmonth <- lubridate::month(modis.files$enddate)
-  modis.files$endday <- lubridate::day(modis.files$enddate)
+  modis_files$endyear <- lubridate::year(modis_files$enddate)
+  modis_files$endmonth <- lubridate::month(modis_files$enddate)
+  modis_files$endday <- lubridate::day(modis_files$enddate)
 
-  modis.files$yday <- lubridate::yday(modis.files$date)
-  modis.files$endyday <- lubridate::yday(modis.files$enddate)
+  modis_files$yday <- lubridate::yday(modis_files$date)
+  modis_files$endyday <- lubridate::yday(modis_files$enddate)
 
   # Function for quick conversion of ordinal dates.
   yearyearday <- function(yr, yd) {
@@ -2888,44 +2893,44 @@ vegetation_extract <- function(
 
   # Some date windows have multiple files produced at different times. Extract
   # and store production dates so we can select between these files later.
-  modis.files$productiondate <- yearyearday(
-    as.numeric(substr(modis.files$filename, 61 - 16, 61 - 13)),
-    as.numeric(substr(modis.files$filename, 61 - 12, 61 - 10))
+  modis_files$productiondate <- yearyearday(
+    as.numeric(substr(modis_files$filename, 61 - 16, 61 - 13)),
+    as.numeric(substr(modis_files$filename, 61 - 12, 61 - 10))
   ) +
     lubridate::hms(paste0(
-      substr(modis.files$filename, 61 - 9, 61 - 8),
+      substr(modis_files$filename, 61 - 9, 61 - 8),
       ":",
-      substr(modis.files$filename, 61 - 7, 61 - 6),
+      substr(modis_files$filename, 61 - 7, 61 - 6),
       ":",
-      substr(modis.files$filename, 61 - 5, 61 - 4)
+      substr(modis_files$filename, 61 - 5, 61 - 4)
     )) # So long as date format in files stays consistent, this should work
   # fine.
 
   # Extract and bind spatial extent of each data file.
-  modis.files <- cbind(
-    modis.files,
-    as.data.frame(luna::modisExtent(modis.files$filename))
+  modis_files <- cbind(
+    modis_files,
+    as.data.frame(luna::modisExtent(modis_files$filename))
   )
 
   # Build object to use in matching sites to their respective MODIS data file.
-  modis.match <- data %>%
+  modis_match <- data %>%
     dplyr::mutate(
       date = as.Date(paste0(survey_year, "-", survey_month, "-", survey_day))
     ) %>%
     dplyr::mutate(yday = lubridate::yday(date)) %>%
     dplyr::select(SurveyAreaIdentifier, survey_year, yday, geometry) %>%
-    sf::st_transform(terra::crs(terra::rast(modis.files$filename[1])))
+    sf::st_transform(terra::crs(terra::rast(modis_files$filename[1])))
 
   # If buffered, extract coordinates from centroids. Append coordinates.
   if (buffered == TRUE) {
     suppressWarnings(
-      modis.match <- cbind(
-        modis.match,
-        sf::st_coordinates(sf::st_centroid(modis.match))
+      modis_match <- cbind(
+        modis_match,
+        sf::st_coordinates(sf::st_centroid(modis_match))
       )
     )
   } else {
-    modis.match <- cbind(modis.match, sf::st_coordinates(modis.match))
+    modis_match <- cbind(modis_match, sf::st_coordinates(modis_match))
   }
 
   # Open vectors to store site/date information for sites/dates that are unable
@@ -2935,18 +2940,18 @@ vegetation_extract <- function(
   warning_dates <- c()
 
   # Loop through each site-date combination and match to a data file.
-  for (i in unique(modis.match$SurveyAreaIdentifier)) {
-    for (j in unique(modis.match$survey_year[
-      modis.match$SurveyAreaIdentifier == i
+  for (i in unique(modis_match$SurveyAreaIdentifier)) {
+    for (j in unique(modis_match$survey_year[
+      modis_match$SurveyAreaIdentifier == i
     ])) {
-      for (k in unique(modis.match$yday[
-        modis.match$SurveyAreaIdentifier == i & modis.match$survey_year == j
+      for (k in unique(modis_match$yday[
+        modis_match$SurveyAreaIdentifier == i & modis_match$survey_year == j
       ])) {
         
         # Create temporary object containing only data for site i on day k
         # of year j.
         tmp <- dplyr::filter(
-          modis.match,
+          modis_match,
           SurveyAreaIdentifier == i,
           survey_year == j,
           yday == k
@@ -2955,14 +2960,14 @@ vegetation_extract <- function(
         # Check to see whether the site-date combination can be matched to a
         # data file.
         if (
-          nrow(modis.files[
-            modis.files$year == tmp$survey_year &
-              modis.files$xmin < tmp$X &
-              modis.files$xmax > tmp$X &
-              modis.files$ymin < tmp$Y &
-              modis.files$ymax > tmp$Y &
-              modis.files$yday <= tmp$yday &
-              modis.files$endyday > tmp$yday,
+          nrow(modis_files[
+            modis_files$year == tmp$survey_year &
+              modis_files$xmin < tmp$X &
+              modis_files$xmax > tmp$X &
+              modis_files$ymin < tmp$Y &
+              modis_files$ymax > tmp$Y &
+              modis_files$yday <= tmp$yday &
+              modis_files$endyday > tmp$yday,
           ]) ==
             0
         ) {
@@ -2970,11 +2975,11 @@ vegetation_extract <- function(
           # Do the coordinates fall within the area covered by any of
           # the data files?
           spatial_check <- ifelse(
-            nrow(modis.files[
-              modis.files$xmin < tmp$X &
-                modis.files$xmax > tmp$X &
-                modis.files$ymin < tmp$Y &
-                modis.files$ymax > tmp$Y,
+            nrow(modis_files[
+              modis_files$xmin < tmp$X &
+                modis_files$xmax > tmp$X &
+                modis_files$ymin < tmp$Y &
+                modis_files$ymax > tmp$Y,
             ]) >
               0,
             TRUE,
@@ -2983,7 +2988,7 @@ vegetation_extract <- function(
           
           # Does data exist for the data's year?
           year_check <- ifelse(
-            nrow(modis.files[modis.files$year == tmp$survey_year, ]) > 0,
+            nrow(modis_files[modis_files$year == tmp$survey_year, ]) > 0,
             TRUE,
             FALSE
           )
@@ -2991,8 +2996,8 @@ vegetation_extract <- function(
           # Does the date fall within the date windows covered by any of the 
           # data files?
           yday_check <- ifelse(
-            nrow(modis.files[
-              modis.files$yday <= tmp$yday & modis.files$endyday > tmp$yday,
+            nrow(modis_files[
+              modis_files$yday <= tmp$yday & modis_files$endyday > tmp$yday,
             ]) >
               0,
             TRUE,
@@ -3020,24 +3025,24 @@ vegetation_extract <- function(
           # List all files that match the location and date.
           suppressWarnings(
             {
-              poss.files <- modis.files[
-                modis.files$year == tmp$survey_year &
-                  modis.files$xmin < tmp$X &
-                  modis.files$xmax > tmp$X &
-                  modis.files$ymin < tmp$Y &
-                  modis.files$ymax > tmp$Y &
-                  modis.files$yday <= tmp$yday &
-                  modis.files$endyday > tmp$yday,
+              poss_files <- modis_files[
+                modis_files$year == tmp$survey_year &
+                  modis_files$xmin < tmp$X &
+                  modis_files$xmax > tmp$X &
+                  modis_files$ymin < tmp$Y &
+                  modis_files$ymax > tmp$Y &
+                  modis_files$yday <= tmp$yday &
+                  modis_files$endyday > tmp$yday,
               ]
 
               # Pick the most recently produced file.
-              modis.match[
-                modis.match$SurveyAreaIdentifier == i &
-                  modis.match$survey_year == j &
-                  modis.match$yday == k,
+              modis_match[
+                modis_match$SurveyAreaIdentifier == i &
+                  modis_match$survey_year == j &
+                  modis_match$yday == k,
                 "filename"
-              ] <- poss.files$filename[
-                poss.files$productiondate == max(poss.files$productiondate)
+              ] <- poss_files$filename[
+                poss_files$productiondate == max(poss_files$productiondate)
               ]
             }
           )
@@ -3111,7 +3116,7 @@ vegetation_extract <- function(
   }
 
   # Remove observations without matches.
-  modis.match <- dplyr::filter(modis.match, !is.na(filename))
+  modis_match <- dplyr::filter(modis_match, !is.na(filename))
 
   # Create an ordinal date column in original data for later joining.
   data$yday <- paste0(
@@ -3149,14 +3154,14 @@ vegetation_extract <- function(
     )
 
     # Loop through each matched MODIS data file.
-    for (j in unique(modis.match$filename)) {
+    for (j in unique(modis_match$filename)) {
       # Create object with all site-date combinations that matched to file j.
       pts_to_fill <- data[
         data$SurveyAreaIdentifier %in%
-          modis.match$SurveyAreaIdentifier[modis.match$filename == j] &
+          modis_match$SurveyAreaIdentifier[modis_match$filename == j] &
           data$survey_year %in%
-            modis.match$survey_year[modis.match$filename == j] &
-          data$yday %in% modis.match$yday[modis.match$filename == j],
+            modis_match$survey_year[modis_match$filename == j] &
+          data$yday %in% modis_match$yday[modis_match$filename == j],
       ]
 
       # Open the requested layer in file j.
@@ -3172,7 +3177,7 @@ vegetation_extract <- function(
             dplyr::filter(
               SurveyAreaIdentifier == k,
               survey_year %in%
-                modis.match$survey_year[modis.match$filename == j]
+                modis_match$survey_year[modis_match$filename == j]
             ) %>%
             dplyr::select(SurveyAreaIdentifier, geometry) %>%
             dplyr::distinct() %>%
@@ -3185,14 +3190,14 @@ vegetation_extract <- function(
           data[
             data$SurveyAreaIdentifier == k &
               data$survey_year ==
-                modis.match$survey_year[
-                  modis.match$filename == j &
-                    modis.match$SurveyAreaIdentifier == k
+                modis_match$survey_year[
+                  modis_match$filename == j &
+                    modis_match$SurveyAreaIdentifier == k
                 ] &
               data$yday %in%
-                modis.match$yday[
-                  modis.match$filename == j &
-                    modis.match$SurveyAreaIdentifier == k
+                modis_match$yday[
+                  modis_match$filename == j &
+                    modis_match$SurveyAreaIdentifier == k
                 ],
             ifelse(i == "modis_ndvi", "ndvi", "evi")
           ] <- exactextractr::exact_extract(modis_clip, tmp, fun = "mean")
@@ -3202,7 +3207,7 @@ vegetation_extract <- function(
             dplyr::filter(
               SurveyAreaIdentifier == k,
               survey_year %in%
-                modis.match$survey_year[modis.match$filename == j]
+                modis_match$survey_year[modis_match$filename == j]
             ) %>%
             dplyr::select(SurveyAreaIdentifier, geometry) %>%
             dplyr::distinct() %>%
@@ -3213,14 +3218,14 @@ vegetation_extract <- function(
           data[
             data$SurveyAreaIdentifier == k &
               data$survey_year ==
-                modis.match$survey_year[
-                  modis.match$filename == j &
-                    modis.match$SurveyAreaIdentifier == k
+                modis_match$survey_year[
+                  modis_match$filename == j &
+                    modis_match$SurveyAreaIdentifier == k
                 ] &
               data$yday %in%
-                modis.match$yday[
-                  modis.match$filename == j &
-                    modis.match$SurveyAreaIdentifier == k
+                modis_match$yday[
+                  modis_match$filename == j &
+                    modis_match$SurveyAreaIdentifier == k
                 ],
             ifelse(i == "modis_ndvi", "ndvi", "evi")
           ] <- terra::extract(modis, tmp, fun = "mean")[, index]
@@ -3264,7 +3269,7 @@ vegetation_extract <- function(
       "[MODIS NDVI/EVI Extraction] task complete. Removing files."
     ))
 
-    file.remove(modis.files$filename)
+    file.remove(modis_files$filename)
   }
 
   # Return input data with appended vegetation columns.
@@ -3290,10 +3295,7 @@ elevation_download <- function(
 ) {
   # Check packages
   have_pkg_check(c(
-    "stringr",
-    "dplyr",
     "sf",
-    "rlang",
     "elevatr",
     "terra"
   ))
@@ -3346,10 +3348,11 @@ elevation_download <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      SurveyAreaIdentifier = !!rlang::sym(site_name)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
   data$SurveyAreaIdentifier <- as.character(data$SurveyAreaIdentifier)
@@ -3380,7 +3383,7 @@ elevation_download <- function(
     neg_to_na = TRUE, # Turn ocean tiles with negative elevation to NAs.
     expand = 20000,# Arbitrarily high number selected (20km).
     # Maybe unnecessary, could reduce download size.
-    verbose = F
+    verbose = FALSE
   ) %>%
     terra::rast()
 
@@ -3391,7 +3394,7 @@ elevation_download <- function(
 # Function to extract elevation data from provided elevation SpatRaster.
 elevation_extract <- function(
   data,
-  elevation_data = NULL, # SpatRaster derived from elevatr::get_elev_raster(),
+  elevation_data, # SpatRaster derived from elevatr::get_elev_raster(),
   # downloadable via elevation_download().
   covariates = "elevation", # Only option is elevation.
   site_name = NULL # optional argument to provide column name containing site
@@ -3401,12 +3404,8 @@ elevation_extract <- function(
 ) {
   # Check packages
   have_pkg_check(c(
-    "stringr",
-    "dplyr",
     "sf",
-    "rlang",
-    "terra",
-    "exactextractr"
+    "terra"
   ))
 
   # Catch misspecified covariates. Return error if any exist.
@@ -3418,7 +3417,7 @@ elevation_extract <- function(
   }
 
   # If no elevation raster is provided, return error.
-  if (is.null(elevation_data)) {
+  if (missing(elevation_data)) {
     stop(
       "[Elevation Extraction] no elevation data provided to extract from. Please provide a terra SpatRaster containing the necessary elevation data. Elevation data can be downloaded using elevation_download.",
       call. = FALSE
@@ -3491,10 +3490,11 @@ elevation_extract <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      SurveyAreaIdentifier = !!rlang::sym(site_name)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
   data$SurveyAreaIdentifier <- as.character(data$SurveyAreaIdentifier)
@@ -3512,6 +3512,11 @@ elevation_extract <- function(
 
     # Convert to sf object for use in workflow.
     data <- sf::st_as_sf(data)
+  }
+  
+  # If buffered, check for packages necessary in buffered workflow.
+  if(buffered == TRUE) {
+    have_pkg_check("exactextractr")
   }
 
   elev <- elevation_data
@@ -3655,23 +3660,26 @@ worldclim_download <- function(
 
   # Create download path if it doesn't already exist.
   if (is.null(dl_path) & !dir.exists("./worldclim")) {
-    dir.create("./worldclim", recursive = T)
+    dir.create("./worldclim", recursive = TRUE)
   }
 
   if (!is.null(dl_path) & !dir.exists(paste0(dl_path, "/worldclim"))) {
-    dir.create(paste0(dl_path, "/worldclim"), recursive = T)
+    dir.create(paste0(dl_path, "/worldclim"), recursive = TRUE)
   }
   
   # Create index for climate variables from covariate request.
   clim_vars <- gsub(
     pattern = "worldclim_",
     replacement = "",
-    grep("worldclim_", covariates, value = T)
+    grep("worldclim_", covariates, value = TRUE)
   )
 
   # Unless user specified, attempt to automatically detect the countries for
   # which data must be downloaded.
   if (is.null(countries)) {
+    # Check for additional package necessary in this workflow.
+    have_pkg_check("spData")
+    
     # Check data is in the desired format.
     input_fmt <- covariate_fmt_check(data)
 
@@ -3810,7 +3818,7 @@ worldclim_download <- function(
 # Function to extract WorldClim data from provided WorldClim SpatRaster(s).
 worldclim_extract <- function(
   data,
-  worldclim_data = NULL, # named list containing SpatRaster containing 
+  worldclim_data, # named list containing SpatRaster containing 
   # WorldClim data, downloadable via WorldClim_download(). Names derived from
   # WorldClim variable names ("tmin", "tmax", "tavg", "prec", "wind", "vapr",
   # "bio").
@@ -3823,18 +3831,14 @@ worldclim_extract <- function(
   # data. Default is assumed to be the BMDE column 'survey_month'. Can
   # be left NULL and still function properly if originally specified in a call
   # to data_fmt().
-  dl_path = NULL, # Path to downloaded files. Only needed if dl_path = TRUE and
+  dl_path = NULL, # Path to downloaded files. Only needed if retain = TRUE and
   # custom dl_path is used.
   retain = TRUE # Should data files be kept after extraction?
 ) {
   # Check packages
   have_pkg_check(c(
-    "stringr",
-    "dplyr",
     "sf",
-    "rlang",
-    "terra",
-    "exactextractr"
+    "terra"
   ))
 
   # Catch misspecified covariates. Return error if any exist.
@@ -3848,7 +3852,7 @@ worldclim_extract <- function(
   }
 
   # If no WorldClim rasters are provided, return error.
-  if (is.null(worldclim_data)) {
+  if (missing(worldclim_data)) {
     stop(
       "[WorldClim Extraction] no WorldClim rasters provided to extract from.",
       " Please provide a list of the necessary rasters. Data can be downloaded",
@@ -3935,19 +3939,21 @@ worldclim_extract <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      SurveyAreaIdentifier = !!rlang::sym(site_name)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
   data$SurveyAreaIdentifier <- as.character(data$SurveyAreaIdentifier)
 
   if (!is.null(date_month) & !("survey_month" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      survey_month = !!rlang::sym(date_month)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "survey_month" = !!date_month)
   }
 
   # Use month_check() to validate month data.
@@ -4016,6 +4022,11 @@ worldclim_extract <- function(
 
     # Convert to sf object for use in workflow.
     data <- sf::st_as_sf(data)
+  }
+  
+  # If buffered, check for packages necessary in buffered workflow.
+  if(buffered == TRUE) {
+    have_pkg_check("exactextractr")
   }
 
   clim <- worldclim_data
@@ -4285,11 +4296,7 @@ scanfi_download <- function(covariates = "scanfi_height",  # Other options
                             # working directory.
                             ) {
   # Check packages
-  have_pkg_check(c(
-    "dplyr",
-    "stringr",
-    "terra"
-  ))
+  have_pkg_check("terra")
 
   # Catch misspecified covariates. Return error if any exist.
   if (FALSE %in% (covariates %in% nc_covariate_table()$covariate_name)) {
@@ -4303,18 +4310,18 @@ scanfi_download <- function(covariates = "scanfi_height",  # Other options
 
   # Create download path if it doesn't already exist.
   if (is.null(dl_path) & !dir.exists("./scanfi")) {
-    dir.create("./scanfi", recursive = T)
+    dir.create("./scanfi", recursive = TRUE)
   }
 
   if (!is.null(dl_path) & !dir.exists(paste0(dl_path, "/scanfi"))) {
-    dir.create(paste0(dl_path, "/scanfi"), recursive = T)
+    dir.create(paste0(dl_path, "/scanfi"), recursive = TRUE)
   }
 
   # Create index for SCANFI variables from requested covariates.
   scanfi_vars <- gsub(
     pattern = "scanfi_",
     replacement = "",
-    grep("scanfi_", covariates, value = T)
+    grep("scanfi_", covariates, value = TRUE)
   )
 
   # Create table of download links for each SCANFI variable.
@@ -4479,15 +4486,13 @@ scanfi_read <- function(covariates = NULL, # vector of requested SCANFI
                         # covariates argument.
                         ) {
   # Check packages
-  have_pkg_check(c(
-    "terra"
-  ))
+  have_pkg_check("terra")
 
   # Create index for SCANFI variables from requested covariates.
   scanfi_vars <- gsub(
     pattern = "scanfi_",
     replacement = "",
-    grep("scanfi_", covariates, value = T)
+    grep("scanfi_", covariates, value = TRUE)
   )
  
   # Open list to store SCANFI rasters.
@@ -4504,7 +4509,7 @@ scanfi_read <- function(covariates = NULL, # vector of requested SCANFI
 
 scanfi_extract <- function(
   data,
-  scanfi_data = NULL, # named list containing SpatRaster containing 
+  scanfi_data, # named list containing SpatRaster containing 
   # SCANFI data, downloadable via WorldClim_download(). Names derived from
   # SCANFI variables ("height", "biomass", etc.)
   covariates = "scanfi_height", # Other options listed in nc_covariate_table().
@@ -4512,19 +4517,14 @@ scanfi_extract <- function(
   # names. Default is assumed to be the BMDE column 'SurveyAreaIdentifier'. Can
   # be left NULL and still function properly if originally specified in a call
   # to data_fmt().
-  dl_path = NULL, # Path to downloaded files. Only needed if dl_path = TRUE and
+  dl_path = NULL, # Path to downloaded files. Only needed if retain = TRUE and
   # custom dl_path is used.
   retain = TRUE # Should data files be kept after extraction?
 ) {
   # Check packages
   have_pkg_check(c(
-    "stringr",
-    "dplyr",
     "sf",
-    "rlang",
-    "terra",
-    "landscapemetrics",
-    "exactextractr"
+    "terra"
   ))
 
   # Catch misspecified covariates. Return error if any exist.
@@ -4538,7 +4538,7 @@ scanfi_extract <- function(
   }
 
   # If no SCANFI rasters are provided, return error.
-  if (is.null(scanfi_data)) {
+  if (missing(scanfi_data)) {
     stop(
       "[SCANFI Extraction] no SCANFI rasters provided to extract from. Please",
       " provide a list containing one raster for each listed SCANFI covariate.",
@@ -4619,10 +4619,11 @@ scanfi_extract <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      SurveyAreaIdentifier = !!rlang::sym(site_name)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
   data$SurveyAreaIdentifier <- as.character(data$SurveyAreaIdentifier)
@@ -4691,6 +4692,15 @@ scanfi_extract <- function(
   for (i in scanfi_vars) {
     message("[SCANFI Extraction] extracting SCANFI ", i, ".")
 
+    # If buffered, check for packages necessary in buffered workflow.
+    if(buffered == TRUE & i == "nfilc") {
+      have_pkg_check("landscapemetrics")
+    }
+    
+    if(buffered == TRUE & !(i == "nfilc")) {
+      have_pkg_check("exactextractr")
+    }
+    
     # Crop SCANFI data to study area.
     scanfi_data[[i]] <- terra::crop(
       scanfi_data[[i]],
@@ -4756,7 +4766,7 @@ scanfi_extract <- function(
         # if not.
         if (i == "nfilc") {
           # Create object containing parseable names for NFI Land Cover classes.
-          nfilc.classes <- data.frame(
+          nfilc_classes <- data.frame(
             class = c(1:8),
             name = c(
               "bryoid",
@@ -4793,15 +4803,15 @@ scanfi_extract <- function(
             for (k in scanfi_pland$class) {
               data[
                 data$SurveyAreaIdentifier == j,
-                paste0("nfilc_", nfilc.classes$name[nfilc.classes$class == k])
+                paste0("nfilc_", nfilc_classes$name[nfilc_classes$class == k])
               ] <- scanfi_pland$value[scanfi_pland$class == k]
             }
             
             # Check whether any land cover classes were never in the cropped
             # raster. These are true zeros, but would be left out otherwise.
             # Add these columns in with 0 values.
-            missing_cols <- paste0("nfilc_", nfilc.classes$name)[
-              !(paste0("nfilc_", nfilc.classes$name) %in% names(data))
+            missing_cols <- paste0("nfilc_", nfilc_classes$name)[
+              !(paste0("nfilc_", nfilc_classes$name) %in% names(data))
             ]
             
             for (l in missing_cols) {
@@ -4813,8 +4823,8 @@ scanfi_extract <- function(
             # represent.
             for (k in paste0(
               "nfilc_",
-              nfilc.classes$name[
-                paste0("nfilc_", nfilc.classes$name) %in% names(data)
+              nfilc_classes$name[
+                paste0("nfilc_", nfilc_classes$name) %in% names(data)
               ]
             )) {
               data[is.na(data[, k] %>% sf::st_drop_geometry()), k] <- 0
@@ -4824,7 +4834,7 @@ scanfi_extract <- function(
             # documentation.
             data <- data[, c(
               grep("nfilc_", names(data), value = TRUE, invert = TRUE),
-              paste0("nfilc_", nfilc.classes$name)
+              paste0("nfilc_", nfilc_classes$name)
             )]
           } else {
         
@@ -4847,7 +4857,7 @@ scanfi_extract <- function(
 
               extr_table <- dplyr::left_join(
                 extr_table,
-                nfilc.classes,
+                nfilc_classes,
                 by = "class"
               )
             } else {
@@ -4859,7 +4869,7 @@ scanfi_extract <- function(
 
               extr_table <- dplyr::left_join(
                 extr_table,
-                nfilc.classes,
+                nfilc_classes,
                 by = "class"
               )
             }
@@ -4871,8 +4881,8 @@ scanfi_extract <- function(
               data[
                 data$SurveyAreaIdentifier == j,
                 "nfilc_class"
-              ] <- nfilc.classes$name[
-                nfilc.classes$class ==
+              ] <- nfilc_classes$name[
+                nfilc_classes$class ==
                   terra::extract(scanfi_data[[i]], tmp, fun = unique)[,
                     "SCANFI_att_nfiLandCover_SW_2020_v1.2"
                   ]
@@ -4889,8 +4899,8 @@ scanfi_extract <- function(
                     ") Extraction] site ",
                     j,
                     " touches multiple cells. Extraction returned `",
-                    suppressWarnings(nfilc.classes$name[
-                      nfilc.classes$class ==
+                    suppressWarnings(nfilc_classes$name[
+                      nfilc_classes$class ==
                         terra::extract(scanfi_data[[i]], tmp, fun = unique)[,
                           "SCANFI_att_nfiLandCover_SW_2020_v1.2"
                         ]
@@ -4964,7 +4974,7 @@ scanfi_extract <- function(
       
       file.remove(list.files(
         ifelse(is.null(dl_path), "./scanfi", paste0(dl_path, "/scanfi")),
-        full.names = T
+        full.names = TRUE
       ))
     }
   }
@@ -4979,8 +4989,8 @@ scanfi_extract <- function(
 # Function to download data from Daymet. Wrapper for appeears::request_rs().
 daymet_download <- function(
   data,
-  covariates = NULL, # Other options listed in nc_covariate_table().
-  ed_username = NULL, # users' EarthData account username NOT EMAIL.
+  covariates = "daymet_prcp", # Other options listed in nc_covariate_table().
+  ed_username, # users' EarthData account username NOT EMAIL.
   site_name = NULL, # optional argument to provide column name containing site
   # names. Default is assumed to be the BMDE column 'SurveyAreaIdentifier'. Can
   # be left NULL and still function properly if originally specified in a call
@@ -5007,17 +5017,14 @@ daymet_download <- function(
 ) {
   # Check packages
   have_pkg_check(c(
-    "stringr",
-    "dplyr",
     "sf",
-    "rlang",
     "terra",
     "appeears"
   ))
 
   # Check that an EarthData account username has been provided. If not, return
   # error.
-  if (is.null(ed_username)) {
+  if (missing(ed_username)) {
     stop(
       "[Daymet Download] MODIS data requested but Earthdata system login",
       " information not supplied. NOTE: downloading DAYMET data requires your",
@@ -5110,28 +5117,31 @@ daymet_download <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      SurveyAreaIdentifier = !!rlang::sym(site_name)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
   data$SurveyAreaIdentifier <- as.character(data$SurveyAreaIdentifier)
 
   if (!is.null(date_year) & !("survey_year" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      survey_year = !!rlang::sym(date_year)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "survey_year" = !!date_year)
   }
 
   data$survey_year <- as.numeric(data$survey_year)
 
   if (!is.null(date_month) & !("survey_month" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      survey_month = !!rlang::sym(date_month)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "survey_month" = !!date_month)
   }
 
   # Use month_check() to validate month data.
@@ -5146,10 +5156,11 @@ daymet_download <- function(
   data$survey_month <- as.numeric(data$survey_month)
 
   if (!is.null(date_day) & !("survey_day" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      survey_day = !!rlang::sym(date_day)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "survey_day" = !!date_day)
   }
 
   # Use dom_check() to validate day data.
@@ -5216,11 +5227,11 @@ daymet_download <- function(
 
   # Create download path if it doesn't already exist.
   if (is.null(dl_path) & !dir.exists("./daymet")) {
-    dir.create("./daymet", recursive = T)
+    dir.create("./daymet", recursive = TRUE)
   }
 
   if (!is.null(dl_path) & !dir.exists(paste0(dl_path, "/daymet"))) {
-    dir.create(paste0(dl_path, "/daymet"), recursive = T)
+    dir.create(paste0(dl_path, "/daymet"), recursive = TRUE)
   }
 
   # Set EarthData username and password in user Keyring.
@@ -5232,10 +5243,10 @@ daymet_download <- function(
   token <- appeears::rs_login(user = ed_username)
 
   # Create index from each requested Daymet covariate.
-  daymet.vars <- gsub(
+  daymet_vars <- gsub(
     pattern = "daymet_",
     replacement = "",
-    grep("daymet_", covariates, value = T)
+    grep("daymet_", covariates, value = TRUE)
   )
 
   # By default, take user through request submission process.
@@ -5319,7 +5330,7 @@ daymet_download <- function(
           )
         ),
         product = "DAYMET.004",
-        layer = daymet.vars
+        layer = daymet_vars
       )
     }
 
@@ -5466,10 +5477,10 @@ daymet_download <- function(
 
 daymet_extract <- function(
   data,
-  daymet_reqs = NULL, # Named list. Each list element should be named after
+  daymet_reqs, # Named list. Each list element should be named after
   # a year for which data was requested, and should contain the corresponding
   # request ID.
-  covariates = NULL, # Options listed in nc_covariate_table().
+  covariates = "daymet_prcp", # Options listed in nc_covariate_table().
   site_name = NULL, # optional argument to provide column name containing site
   # names. Default is assumed to be the BMDE column 'SurveyAreaIdentifier'. Can
   # be left NULL and still function properly if originally specified in a call
@@ -5493,14 +5504,9 @@ daymet_extract <- function(
 ) {
   # Check packages
   have_pkg_check(c(
-    "stringr",
-    "dplyr",
     "sf",
-    "rlang",
     "readr",
-    "lubridate",
-    "terra",
-    "exactextractr"
+    "terra"
   ))
 
   # Check data is in the desired format.
@@ -5514,7 +5520,17 @@ daymet_extract <- function(
       call. = FALSE
     )
   }
-
+  
+  # Check that DAYMET request information is supplied.
+  if(missing(daymet_reqs)) {
+    stop(
+      "[Daymet Extraction] no Daymet request details are provided to extract from.",
+      " Please provide a named list with a element containing the request ID for",
+      " each year of data downloaded, named with the corresponding year. Data ",
+      " can be downloaded using daymet_download().",
+      call. = FALSE
+    )    
+  }
 
   # Check whether information on alternate column names has been stored
   # in the attributes by data_fmt(). However, prioritize alternate column names
@@ -5593,28 +5609,31 @@ daymet_extract <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      SurveyAreaIdentifier = !!rlang::sym(site_name)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
   data$SurveyAreaIdentifier <- as.character(data$SurveyAreaIdentifier)
 
   if (!is.null(date_year) & !("survey_year" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      survey_year = !!rlang::sym(date_year)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "survey_year" = !!date_year)
   }
 
   data$survey_year <- as.numeric(data$survey_year)
 
   if (!is.null(date_month) & !("survey_month" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      survey_month = !!rlang::sym(date_month)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "survey_month" = !!date_month)
   }
 
   # Validate month data using month_check()
@@ -5629,10 +5648,11 @@ daymet_extract <- function(
   data$survey_month <- as.numeric(data$survey_month)
 
   if (!is.null(date_day) & !("survey_day" %in% data_cols)) {
-    data <- dplyr::rename(
-      `if`(input_fmt$type == "sf", sf::st_sf(data), data),
-      survey_day = !!rlang::sym(date_day)
-    )
+    if(input_fmt$type == "sf") {
+      data <- sf::st_sf(data)
+    }
+    
+    data <- dplyr::rename(data, "survey_day" = !!date_day)
   }
 
   # Validate day data using dom_check()
@@ -5656,21 +5676,26 @@ daymet_extract <- function(
     # Convert to sf object for use in workflow.
     data <- sf::st_as_sf(data)
   }
+  
+  # If buffered, check for packages necessary in buffered workflow.
+  if(buffered == TRUE) {
+    have_pkg_check("exactextractr")
+  }
 
   # Create index using requested covariates.
-  daymet.vars <- gsub(
+  daymet_vars <- gsub(
     pattern = "daymet_",
     replacement = "",
-    grep("daymet_", covariates, value = T)
+    grep("daymet_", covariates, value = TRUE)
   )
 
   appeears <- daymet_reqs
 
   # Open list to store information file that comes with downloaded Daymet data.
-  daymet.stats <- list()
+  daymet_stats <- list()
 
   # Open vector to store date data.
-  all.dates <- c()
+  all_dates <- c()
 
   # Loop through each year and check dates data is available for. This
   # information is sources from the DAYMET-004-Statistics.csv file that comes
@@ -5692,7 +5717,7 @@ daymet_extract <- function(
         )
       ))
     ) {
-      daymet.stats[[as.character(i)]] <- readr::read_csv(ifelse(
+      daymet_stats[[as.character(i)]] <- readr::read_csv(ifelse(
         is.null(dl_path),
         paste0(
           "./daymet/",
@@ -5707,7 +5732,7 @@ daymet_extract <- function(
         )
       ))
 
-      all.dates <- c(all.dates, unique(daymet.stats[[as.character(i)]]$Date))
+      all_dates <- c(all_dates, unique(daymet_stats[[as.character(i)]]$Date))
     } else {
       stop(
         "[Daymet Extraction] cannot find ",
@@ -5735,7 +5760,7 @@ daymet_extract <- function(
   }
 
   # Convert to date objects
-  all.dates <- as.Date(all.dates)
+  all_dates <- as.Date(all_dates)
 
   # Create comparable date objects in original data.
   data$date <- as.Date(paste0(
@@ -5747,13 +5772,13 @@ daymet_extract <- function(
   ))
   
   # Note any dates that do not have available Daymet data. Warn.
-  missing.dates <- sort(data$date[!(data$date %in% all.dates)])
+  missing_dates <- sort(data$date[!(data$date %in% all_dates)])
 
-  if (length(missing.dates) > 0) {
+  if (length(missing_dates) > 0) {
     warning(
       "[Daymet Extraction] data has not been provided for some dates. These",
       " are: ",
-      stringr::str_flatten_comma(as.character(missing.dates)),
+      stringr::str_flatten_comma(as.character(missing_dates)),
       ". No value will be returned for these dates. Keep in mind that Daymet",
       " data for the current year may not be available yet.",
       call. = FALSE
@@ -5761,28 +5786,28 @@ daymet_extract <- function(
   }
 
   # Fetch all dates with available data.
-  dates <- sort(unique(data$date[data$date %in% all.dates]))
+  dates <- sort(unique(data$date[data$date %in% all_dates]))
 
   # Open vector to store site names that are outside of spatial extent of 
   # provided Daymet files.
   bad_sites <- c()
 
   # Loop through each requested Daymet variable and extract.
-  for (i in daymet.vars) {
+  for (i in daymet_vars) {
     # Loop through each date with data.
     for (j in dates) {
       # Grab all observations needing data from date j.
       pts_to_fill <- dplyr::filter(data, date == j)
 
-      j.date <- as.Date(j)
+      j_date <- as.Date(j)
 
       # Access corresponding file name from data in information file.
       filename <- gsub(
         pattern = "DAYMET_",
         replacement = "DAYMET.",
-        daymet.stats[[as.character(lubridate::year(j.date))]]$`File Name`[
-          daymet.stats[[as.character(lubridate::year(j.date))]]$Date == j.date &
-            daymet.stats[[as.character(lubridate::year(j.date))]]$Dataset == i
+        daymet_stats[[as.character(lubridate::year(j_date))]]$`File Name`[
+          daymet_stats[[as.character(lubridate::year(j_date))]]$Date == j_date &
+            daymet_stats[[as.character(lubridate::year(j_date))]]$Dataset == i
         ]
       )
 
@@ -5791,7 +5816,7 @@ daymet_extract <- function(
         is.null(dl_path),
         paste0(
           "./daymet/",
-          appeears[[as.character(lubridate::year(j.date))]],
+          appeears[[as.character(lubridate::year(j_date))]],
           "/",
           filename,
           ".tif"
@@ -5799,7 +5824,7 @@ daymet_extract <- function(
         paste0(
           dl_path,
           "/daymet/",
-          appeears[[as.character(lubridate::year(j.date))]],
+          appeears[[as.character(lubridate::year(j_date))]],
           "/",
           filename,
           ".tif"
@@ -5864,7 +5889,7 @@ daymet_extract <- function(
           # using terra::extract().
           if (buffered == TRUE) {
             data[
-              data$SurveyAreaIdentifier == k & data$date == j.date,
+              data$SurveyAreaIdentifier == k & data$date == j_date,
               i
             ] <- exactextractr::exact_extract(
               x = daymet,
@@ -5873,7 +5898,7 @@ daymet_extract <- function(
             )
           } else {
             data[
-              data$SurveyAreaIdentifier == k & data$date == j.date,
+              data$SurveyAreaIdentifier == k & data$date == j_date,
               i
             ] <- terra::extract(
               x = daymet,
@@ -5921,16 +5946,16 @@ daymet_extract <- function(
     #     ])
     # 
     #     if (nrow(sites_to_fill) > 0) {
-    #       j.date <- as.Date(j)
+    #       j_date <- as.Date(j)
     # 
     #       filename <- gsub(
     #         pattern = "DAYMET_",
     #         replacement = "DAYMET.",
-    #         daymet.stats[[as.character(lubridate::year(j.date))]]$`File Name`[
-    #           daymet.stats[[as.character(lubridate::year(j.date))]]$Date ==
-    #             j.date &
-    #             daymet.stats[[as.character(lubridate::year(
-    #               j.date
+    #         daymet_stats[[as.character(lubridate::year(j_date))]]$`File Name`[
+    #           daymet_stats[[as.character(lubridate::year(j_date))]]$Date ==
+    #             j_date &
+    #             daymet_stats[[as.character(lubridate::year(
+    #               j_date
     #             ))]]$Dataset ==
     #               i
     #         ]
@@ -5940,7 +5965,7 @@ daymet_extract <- function(
     #         is.null(dl_path),
     #         paste0(
     #           "./daymet/",
-    #           appeears[[as.character(lubridate::year(j.date))]],
+    #           appeears[[as.character(lubridate::year(j_date))]],
     #           "/",
     #           filename,
     #           ".tif"
@@ -5948,7 +5973,7 @@ daymet_extract <- function(
     #         paste0(
     #           dl_path,
     #           "/daymet/",
-    #           appeears[[as.character(lubridate::year(j.date))]],
+    #           appeears[[as.character(lubridate::year(j_date))]],
     #           "/",
     #           filename,
     #           ".tif"
@@ -6006,13 +6031,13 @@ daymet_extract <- function(
     names(data)[names(data) == "survey_day"] <- date_day
   }
 
-  # Remove SCANFI files if requested.
+  # Remove Daymet files if requested.
   if (retain == FALSE) {
     message(paste0("[Daymet Extraction] task complete. Removing files."))
 
     file.remove(list.files(
       ifelse(is.null(dl_path), "./daymet", paste0(dl_path, "/daymet")),
-      full.names = T
+      full.names = TRUE
     ))
   }
 
@@ -6053,7 +6078,6 @@ nc_covariates_merge <- function(
   have_pkg_check(c(
     "sf",
     "terra",
-    "dplyr",
     "tidyterra"
   ))
 
@@ -6625,7 +6649,7 @@ nc_covariates <- function(
   ed_email = NULL, # users' EarthData account email address. Only required if
   # land cover or vegetation data requested.
   ed_username = NULL, # users' EarthData account username. Only required if
-  # daymet data requested.
+  # Daymet data requested.
   elevation_z = 7, # determines zoom for downloaded elevation data. For more information
   # see https://github.com/tilezen/joerd/blob/master/docs/data-sources.md.
   elevation_src = "aws", # Source for elevation data. "aws" is for Terrain Tiles,
