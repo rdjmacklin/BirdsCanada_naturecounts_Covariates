@@ -702,7 +702,7 @@ data_fmt <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name)) {
-    if(input_fmt$type == "sf"){
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
     data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
@@ -718,10 +718,10 @@ data_fmt <- function(
         data <- dplyr::select(data, -longitude)
       }
 
-      if(input_fmt$type == "sf") {
+      if (input_fmt$type == "sf") {
         data <- sf::st_sf(data)
       }
-      
+
       data <- dplyr::rename(data, "longitude" = !!coord_lon)
     }
 
@@ -732,11 +732,11 @@ data_fmt <- function(
       if ("latitude" %in% names(data) & !(coord_lat == "latitude")) {
         data <- dplyr::select(data, -latitude)
       }
-      
-      if(input_fmt$type == "sf") {
+
+      if (input_fmt$type == "sf") {
         data <- sf::st_sf(data)
       }
-      
+
       data <- dplyr::rename(data, "latitude" = !!coord_lat)
     }
 
@@ -744,18 +744,18 @@ data_fmt <- function(
   }
 
   if (!is.null(date_year)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "survey_year" = !!date_year)
   }
 
   if (!is.null(date_month)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "survey_month" = !!date_month)
   }
 
@@ -773,10 +773,10 @@ data_fmt <- function(
   }
 
   if (!is.null(date_day)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "survey_day" = !!date_day)
   }
 
@@ -1295,7 +1295,7 @@ data_fmt <- function(
 data_buff <- function(
   data,
   buffer = FALSE, # Should the data be buffered?
-  buffer_radius = 500, # Radial distance to buffer by.
+  buffer_distance = 500, # Distance to buffer by.
   buffer_units = "m" # Units of provided distance.
 ) {
   # Unless buffering requested, do nothing.
@@ -1316,7 +1316,7 @@ data_buff <- function(
     }
 
     # Ensure radius is coercable to a numeric value.
-    buffer_radius <- as.numeric(buffer_radius)
+    buffer_distance <- as.numeric(buffer_distance)
 
     # If unit provided is not compatible with measurements::conv_unit(), return
     # error.
@@ -1329,10 +1329,10 @@ data_buff <- function(
 
     message(
       "[Data Buffering] buffering sites by ",
-      buffer_radius,
+      buffer_distance,
       buffer_units,
       " radius",
-      ifelse(buffer_radius == 500 & buffer_units == "m", " (default)", ""),
+      ifelse(buffer_distance == 500 & buffer_units == "m", " (default)", ""),
       "."
     )
 
@@ -1353,7 +1353,7 @@ data_buff <- function(
         warning(
           "[Data Buffering] sf POLYGON geometry provided. Existing polygons",
           " will be buffered by an additional ",
-          buffer_radius,
+          buffer_distance,
           buffer_units,
           ".",
           call. = FALSE
@@ -1364,7 +1364,7 @@ data_buff <- function(
       data <- sf::st_buffer(
         data,
         measurements::conv_unit(
-          x = buffer_radius,
+          x = buffer_distance,
           from = buffer_units,
           to = "m"
         )
@@ -1393,7 +1393,7 @@ data_buff <- function(
         warning(
           "[Data Buffering] terra polygons provided. Existing polygons will",
           " be buffered by an additional ",
-          buffer_radius,
+          buffer_distance,
           buffer_units,
           ".",
           call. = FALSE
@@ -1404,7 +1404,7 @@ data_buff <- function(
       data <- terra::buffer(
         data,
         measurements::conv_unit(
-          x = buffer_radius,
+          x = buffer_distance,
           from = buffer_units,
           to = "m"
         )
@@ -1459,7 +1459,7 @@ landcover_download <- function(
       call. = FALSE
     )
   }
-  
+
   # Check whether an EarthData password exists in the environment (is specified
   # earlier in the nc_covariates() workflow), and if not, request using
   # askpass::askpass().
@@ -1534,20 +1534,20 @@ landcover_download <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier") %in% data_cols) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
   data$SurveyAreaIdentifier <- as.character(data$SurveyAreaIdentifier)
 
   if (!is.null(date_year) & !("survey_year") %in% data_cols) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "survey_year" = !!date_year)
   }
 
@@ -1751,20 +1751,20 @@ landcover_extract <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
   data$SurveyAreaIdentifier <- as.character(data$SurveyAreaIdentifier)
 
   if (!is.null(date_year) & !("survey_year" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "survey_year" = !!date_year)
   }
 
@@ -1782,9 +1782,9 @@ landcover_extract <- function(
     # Convert to sf object for use in workflow.
     data <- sf::st_as_sf(data) # Maybe down the line write full process out in terra for terra data.
   }
-  
+
   # If buffered, check for packages necessary in buffered workflow.
-  if(buffered == TRUE) {
+  if (buffered == TRUE) {
     have_pkg_check("landscapemetrics")
   }
 
@@ -2352,30 +2352,30 @@ vegetation_download <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
   data$SurveyAreaIdentifier <- as.character(data$SurveyAreaIdentifier)
 
   if (!is.null(date_year) & !("survey_year" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "survey_year" = !!date_year)
   }
 
   data$survey_year <- as.numeric(data$survey_year)
 
   if (!is.null(date_month)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "survey_month" = !!date_month)
   }
 
@@ -2389,10 +2389,10 @@ vegetation_download <- function(
   data$survey_month <- month_corr
 
   if (!is.null(date_day)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "survey_day" = !!date_day)
   }
 
@@ -2435,17 +2435,17 @@ vegetation_download <- function(
       study_area <- terra::ext(data) %>%
         terra::vect(crs = orig_crs) %>%
         terra::project("ESRI:102001") %>%
-        terra::buffer(20000)# Arbitrarily high number selected (20km).
+        terra::buffer(20000) # Arbitrarily high number selected (20km).
       # Maybe unnecessary, could reduce download size.
     } else {
       study_area <- terra::ext(data) %>%
         terra::vect(crs = orig_crs) %>%
-        terra::buffer(20000)# Arbitrarily high number selected (20km).
+        terra::buffer(20000) # Arbitrarily high number selected (20km).
       # Maybe unnecessary, could reduce download size.
     }
 
     # Convert to sf object for use in workflow.
-    data <- sf::st_as_sf(data) # Maybe down the line write full process out in 
+    data <- sf::st_as_sf(data) # Maybe down the line write full process out in
     # terra for terra data.
   }
 
@@ -2488,8 +2488,8 @@ vegetation_download <- function(
     modis_files <- list()
 
     # Make API call using luna::getNASA() fetching all data between the
-    # first day of the first month surveyed in the first survey year to the 
-    # last day of the last month surveyed in the first survey year. If data for 
+    # first day of the first month surveyed in the first survey year to the
+    # last day of the last month surveyed in the first survey year. If data for
     # that year is not available, skip and warn.
     tryCatch(
       modis_files[[as.character(min(data$survey_year))]] <- luna::getNASA(
@@ -2694,7 +2694,7 @@ vegetation_extract <- function(
   }
 
   # Store attributes so they don't get lost.
-  
+
   # List potential attributes.
   attr_names <- c(
     "site_name",
@@ -2734,9 +2734,9 @@ vegetation_extract <- function(
   if (is.null(date_day) & !is.null(attr(data, "date_day"))) {
     date_day <- attr(data, "date_day")
   }
-  
+
   # Check that all specified column names are present in the data.
-  
+
   # Gather all potentially specified columns.
   specified_cols <- c(site_name, date_year, date_month, date_day)
 
@@ -2745,7 +2745,7 @@ vegetation_extract <- function(
 
   data_cols <- names(data)
 
-  # Compare to columns present in data. Return error if any specified columns 
+  # Compare to columns present in data. Return error if any specified columns
   # are not present. 'if' wrapper needed for when alternate column names exist
   # in the attributes of the data, but conversion of those columns to
   # standardized names has already taken place in data_fmt().
@@ -2769,30 +2769,30 @@ vegetation_extract <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
   data$SurveyAreaIdentifier <- as.character(data$SurveyAreaIdentifier)
 
   if (!is.null(date_year) & !("survey_year" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "survey_year" = !!date_year)
   }
 
   data$survey_year <- as.numeric(data$survey_year)
 
   if (!is.null(date_month) & !("survey_month" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "survey_month" = !!date_month)
   }
 
@@ -2808,10 +2808,10 @@ vegetation_extract <- function(
   data$survey_month <- as.numeric(data$survey_month)
 
   if (!is.null(date_day) & !("survey_day" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "survey_day" = !!date_day)
   }
 
@@ -2834,12 +2834,12 @@ vegetation_extract <- function(
     buffered <- ifelse(input_fmt$geometry == "points", FALSE, TRUE)
 
     # Convert to sf object for use in workflow.
-    data <- sf::st_as_sf(data) # Maybe down the line write full process out in 
+    data <- sf::st_as_sf(data) # Maybe down the line write full process out in
     # terra for terra data.
   }
-  
+
   # If buffered, check for packages necessary in buffered workflow.
-  if(buffered == TRUE) {
+  if (buffered == TRUE) {
     have_pkg_check("exactextractr")
   }
 
@@ -2865,7 +2865,6 @@ vegetation_extract <- function(
       )
   }
 
-  
   # Parse dates stored in filenames of MODIS data files and append column to
   # filenames.
   modis_files <- luna::modisDate(vegetation_files)
@@ -2947,7 +2946,6 @@ vegetation_extract <- function(
       for (k in unique(modis_match$yday[
         modis_match$SurveyAreaIdentifier == i & modis_match$survey_year == j
       ])) {
-        
         # Create temporary object containing only data for site i on day k
         # of year j.
         tmp <- dplyr::filter(
@@ -2971,7 +2969,6 @@ vegetation_extract <- function(
           ]) ==
             0
         ) {
-          
           # Do the coordinates fall within the area covered by any of
           # the data files?
           spatial_check <- ifelse(
@@ -2985,15 +2982,15 @@ vegetation_extract <- function(
             TRUE,
             FALSE
           )
-          
+
           # Does data exist for the data's year?
           year_check <- ifelse(
             nrow(modis_files[modis_files$year == tmp$survey_year, ]) > 0,
             TRUE,
             FALSE
           )
-          
-          # Does the date fall within the date windows covered by any of the 
+
+          # Does the date fall within the date windows covered by any of the
           # data files?
           yday_check <- ifelse(
             nrow(modis_files[
@@ -3021,7 +3018,7 @@ vegetation_extract <- function(
         } else {
           # If no issues with coverage, match site-date combinations to
           # respective files.
-          
+
           # List all files that match the location and date.
           suppressWarnings(
             {
@@ -3109,7 +3106,7 @@ vegetation_extract <- function(
       "[MODIS NDVI/EVI Extraction] observations on ",
       stringr::str_flatten_comma(unique(warning_dates)),
       " fall outside of the temporal extent of the files provided. You have",
-      " provided data for this year but not this 16-day window. No value will", 
+      " provided data for this year but not this 16-day window. No value will",
       " be returned.",
       call. = FALSE
     )
@@ -3145,7 +3142,7 @@ vegetation_extract <- function(
       ifelse(i == "modis_ndvi", "NDVI", "EVI"),
       "."
     ))
-    
+
     # Create index to access appropriate data layer from MODIS rasters.
     index <- ifelse(
       i == "modis_ndvi",
@@ -3237,9 +3234,8 @@ vegetation_extract <- function(
   # Remove ordinal date column from original data.
   data <- dplyr::select(data, -yday)
 
-
   # Check if attributes were found and stored from input data. If they were
-  # found reattach.  
+  # found reattach.
   if (exists("attrs")) {
     # Reattach attributes
 
@@ -3311,7 +3307,6 @@ elevation_download <- function(
     )
   }
 
-
   # Check whether information on alternate column names has been stored
   # in the attributes by data_fmt(). However, prioritize alternate column names
   # specified in the current call.
@@ -3327,7 +3322,7 @@ elevation_download <- function(
 
   data_cols <- names(data)
 
-  # Compare to columns present in data. Return error if any specified columns 
+  # Compare to columns present in data. Return error if any specified columns
   # are not present. 'if' wrapper needed for when alternate column names exist
   # in the attributes of the data, but conversion of those columns to
   # standardized names has already taken place in data_fmt().
@@ -3348,10 +3343,10 @@ elevation_download <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
@@ -3381,7 +3376,7 @@ elevation_download <- function(
     prj = sf::st_crs(data),
     src = src,
     neg_to_na = TRUE, # Turn ocean tiles with negative elevation to NAs.
-    expand = 20000,# Arbitrarily high number selected (20km).
+    expand = 20000, # Arbitrarily high number selected (20km).
     # Maybe unnecessary, could reduce download size.
     verbose = FALSE
   ) %>%
@@ -3449,7 +3444,7 @@ elevation_extract <- function(
     "date_lubridate",
     "crs"
   )
-  
+
   # If any potential attribute names are present in the data attributes,
   # store.
   attrs <- attributes(data)[attr_names[attr_names %in% names(attributes(data))]]
@@ -3469,7 +3464,7 @@ elevation_extract <- function(
 
   data_cols <- names(data)
 
-  # Compare to columns present in data. Return error if any specified columns 
+  # Compare to columns present in data. Return error if any specified columns
   # are not present. 'if' wrapper needed for when alternate column names exist
   # in the attributes of the data, but conversion of those columns to
   # standardized names has already taken place in data_fmt().
@@ -3490,10 +3485,10 @@ elevation_extract <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
@@ -3513,9 +3508,9 @@ elevation_extract <- function(
     # Convert to sf object for use in workflow.
     data <- sf::st_as_sf(data)
   }
-  
+
   # If buffered, check for packages necessary in buffered workflow.
-  if(buffered == TRUE) {
+  if (buffered == TRUE) {
     have_pkg_check("exactextractr")
   }
 
@@ -3525,7 +3520,6 @@ elevation_extract <- function(
 
   # Loop through each site and extract.
   for (i in unique(data$SurveyAreaIdentifier)) {
-    
     # Create temporary object with only point/buffer for site i.
     tmp <- data %>%
       dplyr::filter(SurveyAreaIdentifier == i) %>%
@@ -3555,8 +3549,8 @@ elevation_extract <- function(
         call. = FALSE
       )
     } else {
-      # If no issues with coverage, proceed to extract. If buffered, extract 
-      # using exactextractr::exact_extract(). If not, extract using 
+      # If no issues with coverage, proceed to extract. If buffered, extract
+      # using exactextractr::exact_extract(). If not, extract using
       # terra::extract().
       if (buffered == FALSE) {
         data[data$SurveyAreaIdentifier == i, "elevation"] <- terra::extract(
@@ -3577,28 +3571,28 @@ elevation_extract <- function(
       }
     }
   }
-  
+
   # Code to grab nearest raster value for sites outside of raster coverage.
   # Not sure whether to keep this since we are warning users about these sites
-  # and saying nothing will be returned. Maybe keep as an option 
+  # and saying nothing will be returned. Maybe keep as an option
   # (nearest = TRUE)?
   # if (TRUE %in% is.na(data$elevation)) {
   #   warning(
   #     "[Elevation Extraction] some points are close to shore, and so fall into cells with negative elevation (below sea level). For these cells, the nearest positive elevation has been used.",
   #     call. = FALSE
   #   )
-  # 
+  #
   #   for (i in unique(data$SurveyAreaIdentifier[is.na(data$elevation)])) {
   #     tmp <- data %>%
   #       dplyr::filter(SurveyAreaIdentifier == i) %>%
   #       dplyr::select(SurveyAreaIdentifier, geometry) %>%
   #       dplyr::distinct() %>%
   #       sf::st_buffer(2500)
-  # 
+  #
   #     if (terra::is.related(elev, terra::vect(tmp), relation = "intersects")) {
   #       elev_crop <- terra::crop(elev, vect(tmp)) %>%
   #         terra::as.points()
-  # 
+  #
   #       data$elevation[
   #         data$SurveyAreaIdentifier == i
   #       ] <- terra::values(elev_crop[
@@ -3609,10 +3603,10 @@ elevation_extract <- function(
   # }
 
   # Check if attributes were found and stored from input data. If they were
-  # found reattach.  
+  # found reattach.
   if (exists("attrs")) {
     # Reattach attributes
-    
+
     attributes(data)[names(attrs)] <- attrs
   }
 
@@ -3628,7 +3622,7 @@ elevation_extract <- function(
 
 ########################### WORLDCLIM FUNCTIONS ################################
 
-# Function for downloading WorldClim data. Wrapper for 
+# Function for downloading WorldClim data. Wrapper for
 # geodata::worldclim_country().
 worldclim_download <- function(
   data,
@@ -3666,7 +3660,7 @@ worldclim_download <- function(
   if (!is.null(dl_path) & !dir.exists(paste0(dl_path, "/worldclim"))) {
     dir.create(paste0(dl_path, "/worldclim"), recursive = TRUE)
   }
-  
+
   # Create index for climate variables from covariate request.
   clim_vars <- gsub(
     pattern = "worldclim_",
@@ -3679,7 +3673,7 @@ worldclim_download <- function(
   if (is.null(countries)) {
     # Check for additional package necessary in this workflow.
     have_pkg_check("spData")
-    
+
     # Check data is in the desired format.
     input_fmt <- covariate_fmt_check(data)
 
@@ -3692,7 +3686,7 @@ worldclim_download <- function(
         call. = FALSE
       )
     }
-    
+
     # For sf input, compare to country data from spData package.
     if (input_fmt$type == "sf") {
       world <- sf::st_read(
@@ -3706,8 +3700,8 @@ worldclim_download <- function(
 
       countries <- unique(world$name_long)
     }
-    
-    # For terra input, convert to sf and  compare to country data from spData 
+
+    # For terra input, convert to sf and  compare to country data from spData
     # package.
     if (input_fmt$type == "terra") {
       data <- sf::st_as_sf(data)
@@ -3741,7 +3735,7 @@ worldclim_download <- function(
       } else {
         country_code <- j
       }
-      
+
       # If file doesn't already exist, call geodata::worldclim_country() to
       # download data.
       if (
@@ -3818,7 +3812,7 @@ worldclim_download <- function(
 # Function to extract WorldClim data from provided WorldClim SpatRaster(s).
 worldclim_extract <- function(
   data,
-  worldclim_data, # named list containing SpatRaster containing 
+  worldclim_data, # named list containing SpatRaster containing
   # WorldClim data, downloadable via WorldClim_download(). Names derived from
   # WorldClim variable names ("tmin", "tmax", "tavg", "prec", "wind", "vapr",
   # "bio").
@@ -3897,7 +3891,6 @@ worldclim_extract <- function(
     ]]
   }
 
-
   # Check whether information on alternate column names has been stored
   # in the attributes by data_fmt(). However, prioritize alternate column names
   # specified in the current call.
@@ -3917,7 +3910,7 @@ worldclim_extract <- function(
 
   data_cols <- names(data)
 
-  # Compare to columns present in data. Return error if any specified columns 
+  # Compare to columns present in data. Return error if any specified columns
   # are not present. 'if' wrapper needed for when alternate column names exist
   # in the attributes of the data, but conversion of those columns to
   # standardized names has already taken place in data_fmt().
@@ -3939,20 +3932,20 @@ worldclim_extract <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
   data$SurveyAreaIdentifier <- as.character(data$SurveyAreaIdentifier)
 
   if (!is.null(date_month) & !("survey_month" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "survey_month" = !!date_month)
   }
 
@@ -3966,7 +3959,7 @@ worldclim_extract <- function(
   data$survey_month <- month_corr
 
   data$survey_month <- as.numeric(data$survey_month)
-  
+
   # For sf objects, create area of interest to crop WorldClim rasters to to
   # reduce memory load.
   if (input_fmt$type == "sf") {
@@ -4023,9 +4016,9 @@ worldclim_extract <- function(
     # Convert to sf object for use in workflow.
     data <- sf::st_as_sf(data)
   }
-  
+
   # If buffered, check for packages necessary in buffered workflow.
-  if(buffered == TRUE) {
+  if (buffered == TRUE) {
     have_pkg_check("exactextractr")
   }
 
@@ -4037,7 +4030,6 @@ worldclim_extract <- function(
 
     # Loop through each site and extract.
     for (j in unique(data$SurveyAreaIdentifier)) {
-      
       # Create temporary object with only point/buffer for site i.
       tmp <- data %>%
         dplyr::filter(SurveyAreaIdentifier == j) %>%
@@ -4059,7 +4051,7 @@ worldclim_extract <- function(
         )
 
         # In the first iteration of the loop, check that the site falls within
-        # or is only partially covered by the spatial extent of the provided 
+        # or is only partially covered by the spatial extent of the provided
         # WorldClim rasters. If not, warn.
         if (
           which(
@@ -4107,8 +4099,8 @@ worldclim_extract <- function(
               call. = FALSE
             )
           } else {
-            # If no issues with coverage, proceed to extract. If buffered, 
-            # extract using exactextractr::exact_extract(). If not, extract 
+            # If no issues with coverage, proceed to extract. If buffered,
+            # extract using exactextractr::exact_extract(). If not, extract
             # using terra::extract().
             if (buffered == TRUE) {
               data[
@@ -4168,75 +4160,75 @@ worldclim_extract <- function(
 
     # Code to grab nearest raster value for sites outside of raster coverage.
     # Not sure whether to keep this since we are warning users about these sites
-    # and saying nothing will be returned. Maybe keep as an option 
+    # and saying nothing will be returned. Maybe keep as an option
     # (nearest = TRUE)?
-  #   if (TRUE %in% is.na(data[, i])) {
-  #     for (j in unique(data$SurveyAreaIdentifier[is.na(data[, i])])) {
-  #       for (k in unique(data$survey_month[data$SurveyAreaIdentifier == j])) {
-  #         layername <- paste0(
-  #           substr(
-  #             names(clim[[i]])[1],
-  #             start = 1,
-  #             stop = nchar(names(clim[[i]])[1]) - 1
-  #           ),
-  #           k
-  #         )
-  # 
-  #         tmp <- data %>%
-  #           dplyr::filter(SurveyAreaIdentifier == j) %>%
-  #           dplyr::select(SurveyAreaIdentifier, survey_month, geometry) %>%
-  #           dplyr::distinct() %>%
-  #           sf::st_transform(terra::crs(clim[[i]]))
-  # 
-  #         if (
-  #           terra::is.related(
-  #             clim[[i]],
-  #             terra::vect(tmp),
-  #             relation = "intersects"
-  #           )
-  #         ) {
-  #           if (
-  #             which(
-  #               unique(data$SurveyAreaIdentifier[is.na(
-  #                 data$SurveyAreaIdentifier
-  #               )]) ==
-  #                 j
-  #             ) ==
-  #               1
-  #           ) {
-  #             warning(
-  #               paste0(
-  #                 "[WorldClim (",
-  #                 i,
-  #                 ") Extraction] some points are close to shore, and so fall outside of raster coverage. For these cells, the nearest cell value has been used."
-  #               ),
-  #               call. = FALSE
-  #             )
-  #           }
-  # 
-  #           tmp <- data %>%
-  #             dplyr::filter(SurveyAreaIdentifier == j, survey_month == k) %>%
-  #             dplyr::select(SurveyAreaIdentifier, survey_month, geometry) %>%
-  #             dplyr::distinct() %>%
-  #             sf::st_buffer(2500) %>%
-  #             sf::st_transform(terra::crs(clim[[i]]))
-  # 
-  #           clim_crop <- terra::crop(
-  #             clim[[i]][[layername]],
-  #             terra::vect(tmp)
-  #           ) %>%
-  #             terra::as.points()
-  # 
-  #           data[
-  #             data$SurveyAreaIdentifier == j & data$survey_month == k,
-  #             i
-  #           ] <- terra::values(clim_crop[
-  #             terra::nearest(terra::vect(tmp), clim_crop)$to_id
-  #           ])
-  #         }
-  #       }
-  #     }
-  #   }
+    #   if (TRUE %in% is.na(data[, i])) {
+    #     for (j in unique(data$SurveyAreaIdentifier[is.na(data[, i])])) {
+    #       for (k in unique(data$survey_month[data$SurveyAreaIdentifier == j])) {
+    #         layername <- paste0(
+    #           substr(
+    #             names(clim[[i]])[1],
+    #             start = 1,
+    #             stop = nchar(names(clim[[i]])[1]) - 1
+    #           ),
+    #           k
+    #         )
+    #
+    #         tmp <- data %>%
+    #           dplyr::filter(SurveyAreaIdentifier == j) %>%
+    #           dplyr::select(SurveyAreaIdentifier, survey_month, geometry) %>%
+    #           dplyr::distinct() %>%
+    #           sf::st_transform(terra::crs(clim[[i]]))
+    #
+    #         if (
+    #           terra::is.related(
+    #             clim[[i]],
+    #             terra::vect(tmp),
+    #             relation = "intersects"
+    #           )
+    #         ) {
+    #           if (
+    #             which(
+    #               unique(data$SurveyAreaIdentifier[is.na(
+    #                 data$SurveyAreaIdentifier
+    #               )]) ==
+    #                 j
+    #             ) ==
+    #               1
+    #           ) {
+    #             warning(
+    #               paste0(
+    #                 "[WorldClim (",
+    #                 i,
+    #                 ") Extraction] some points are close to shore, and so fall outside of raster coverage. For these cells, the nearest cell value has been used."
+    #               ),
+    #               call. = FALSE
+    #             )
+    #           }
+    #
+    #           tmp <- data %>%
+    #             dplyr::filter(SurveyAreaIdentifier == j, survey_month == k) %>%
+    #             dplyr::select(SurveyAreaIdentifier, survey_month, geometry) %>%
+    #             dplyr::distinct() %>%
+    #             sf::st_buffer(2500) %>%
+    #             sf::st_transform(terra::crs(clim[[i]]))
+    #
+    #           clim_crop <- terra::crop(
+    #             clim[[i]][[layername]],
+    #             terra::vect(tmp)
+    #           ) %>%
+    #             terra::as.points()
+    #
+    #           data[
+    #             data$SurveyAreaIdentifier == j & data$survey_month == k,
+    #             i
+    #           ] <- terra::values(clim_crop[
+    #             terra::nearest(terra::vect(tmp), clim_crop)$to_id
+    #           ])
+    #         }
+    #       }
+    #     }
+    #   }
   }
 
   # Check if attributes were found and stored from input data. If they were
@@ -4258,17 +4250,18 @@ worldclim_extract <- function(
 
   # Remove WorldClim files if requested.
   if (retain == FALSE) {
-    
     # Check that if default directory doesn't exist an alterate has been
     # specified.
-    if(is.null(dl_path) & !dir.exists("./worldclim")) {
-      warning("[WorldClim Extraction] unable to find default WorldClim",
-              " directory and no alternate specified using dl_path argument",
-              ". No files will be removed.",
-              call. = FALSE)
+    if (is.null(dl_path) & !dir.exists("./worldclim")) {
+      warning(
+        "[WorldClim Extraction] unable to find default WorldClim",
+        " directory and no alternate specified using dl_path argument",
+        ". No files will be removed.",
+        call. = FALSE
+      )
     } else {
       message(paste0("[WorldClim Extraction] task complete. Removing files."))
-      
+
       unlink(
         ifelse(
           is.null(dl_path),
@@ -4288,13 +4281,14 @@ worldclim_extract <- function(
 
 # Function to download data from the Spatialized Canadian National Forest
 # Inventory using download.file().
-scanfi_download <- function(covariates = "scanfi_height",  # Other options 
-                            # listed in nc_covariate_table().
-                            dl_path = NULL # optional argument to provide path
-                            # to download data to. By default, data is
-                            # downloaded to a subfolder 'scanfi/' in the 
-                            # working directory.
-                            ) {
+scanfi_download <- function(
+  covariates = "scanfi_height", # Other options
+  # listed in nc_covariate_table().
+  dl_path = NULL # optional argument to provide path
+  # to download data to. By default, data is
+  # downloaded to a subfolder 'scanfi/' in the
+  # working directory.
+) {
   # Check packages
   have_pkg_check("terra")
 
@@ -4479,12 +4473,13 @@ scanfi_download <- function(covariates = "scanfi_height",  # Other options
   return(scanfi)
 }
 
-scanfi_read <- function(covariates = NULL, # vector of requested SCANFI 
-                        # variables formatted as in nc_covariate_table().
-                        file = NULL # file path to respective SCANFI data file.
-                        # Should be in the order variables are listed in the
-                        # covariates argument.
-                        ) {
+scanfi_read <- function(
+  covariates = NULL, # vector of requested SCANFI
+  # variables formatted as in nc_covariate_table().
+  file = NULL # file path to respective SCANFI data file.
+  # Should be in the order variables are listed in the
+  # covariates argument.
+) {
   # Check packages
   have_pkg_check("terra")
 
@@ -4494,7 +4489,7 @@ scanfi_read <- function(covariates = NULL, # vector of requested SCANFI
     replacement = "",
     grep("scanfi_", covariates, value = TRUE)
   )
- 
+
   # Open list to store SCANFI rasters.
   scanfi <- list()
 
@@ -4509,7 +4504,7 @@ scanfi_read <- function(covariates = NULL, # vector of requested SCANFI
 
 scanfi_extract <- function(
   data,
-  scanfi_data, # named list containing SpatRaster containing 
+  scanfi_data, # named list containing SpatRaster containing
   # SCANFI data, downloadable via WorldClim_download(). Names derived from
   # SCANFI variables ("height", "biomass", etc.)
   covariates = "scanfi_height", # Other options listed in nc_covariate_table().
@@ -4589,7 +4584,7 @@ scanfi_extract <- function(
   }
 
   # Check that all specified column names are present in the data.
-  
+
   # Gather all potentially specified columns.
   specified_cols <- c(site_name)
 
@@ -4598,7 +4593,7 @@ scanfi_extract <- function(
 
   data_cols <- names(data)
 
-  # Compare to columns present in data. Return error if any specified columns 
+  # Compare to columns present in data. Return error if any specified columns
   # are not present. 'if' wrapper needed for when alternate column names exist
   # in the attributes of the data, but conversion of those columns to
   # standardized names has already taken place in data_fmt().
@@ -4619,10 +4614,10 @@ scanfi_extract <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
@@ -4693,23 +4688,22 @@ scanfi_extract <- function(
     message("[SCANFI Extraction] extracting SCANFI ", i, ".")
 
     # If buffered, check for packages necessary in buffered workflow.
-    if(buffered == TRUE & i == "nfilc") {
+    if (buffered == TRUE & i == "nfilc") {
       have_pkg_check("landscapemetrics")
     }
-    
-    if(buffered == TRUE & !(i == "nfilc")) {
+
+    if (buffered == TRUE & !(i == "nfilc")) {
       have_pkg_check("exactextractr")
     }
-    
+
     # Crop SCANFI data to study area.
     scanfi_data[[i]] <- terra::crop(
       scanfi_data[[i]],
       terra::project(study_area, terra::crs(scanfi_data[[i]]))
     )
-    
+
     # Loop through each site and extract.
     for (j in unique(data$SurveyAreaIdentifier)) {
-      
       # Create temporary object with only point/buffer for site i.
       tmp <- data %>%
         dplyr::filter(SurveyAreaIdentifier == j) %>%
@@ -4717,7 +4711,7 @@ scanfi_extract <- function(
         dplyr::distinct() %>%
         sf::st_transform(terra::crs(scanfi_data[[i]]))
 
-      # Check if the site out of or only partially covered by the spatial 
+      # Check if the site out of or only partially covered by the spatial
       # extent of the provided SCANFI data. Warn if so.
       if (
         !terra::is.related(
@@ -4760,8 +4754,8 @@ scanfi_extract <- function(
         )
       } else {
         # If no issues with coverage, proceed to extract. For NFI Land Cover,
-        # extract with landscapemetrics::calculate_lsm() if buffered and with 
-        # terra::extract() if not. Otherwise, extract with 
+        # extract with landscapemetrics::calculate_lsm() if buffered and with
+        # terra::extract() if not. Otherwise, extract with
         # exactextractr::exact_extract() if buffered, and terra::extract()
         # if not.
         if (i == "nfilc") {
@@ -4782,7 +4776,6 @@ scanfi_extract <- function(
 
           # If buffered, extract with landscapemetrics::calculate_lsm().
           if (buffered == TRUE) {
-            
             # Convert temporary object to SpatVector to use with terra:crop()
             tmp <- tmp %>%
               terra::vect()
@@ -4798,7 +4791,7 @@ scanfi_extract <- function(
             )
 
             # Loop through each land cover type present in the cropped raster
-            # and append proportion at site k  to input data. Create parseable 
+            # and append proportion at site k  to input data. Create parseable
             # column names using names for each class listed above.
             for (k in scanfi_pland$class) {
               data[
@@ -4806,18 +4799,18 @@ scanfi_extract <- function(
                 paste0("nfilc_", nfilc_classes$name[nfilc_classes$class == k])
               ] <- scanfi_pland$value[scanfi_pland$class == k]
             }
-            
+
             # Check whether any land cover classes were never in the cropped
             # raster. These are true zeros, but would be left out otherwise.
             # Add these columns in with 0 values.
             missing_cols <- paste0("nfilc_", nfilc_classes$name)[
               !(paste0("nfilc_", nfilc_classes$name) %in% names(data))
             ]
-            
+
             for (l in missing_cols) {
               data[, l] <- 0
             }
-            
+
             # Replace NAs present in columns for land cover classes that were
             # found at some sites but not others with the true zeros they
             # represent.
@@ -4829,7 +4822,7 @@ scanfi_extract <- function(
             )) {
               data[is.na(data[, k] %>% sf::st_drop_geometry()), k] <- 0
             }
-            
+
             # Reorder columns to match class order provided in NFILC
             # documentation.
             data <- data[, c(
@@ -4837,7 +4830,6 @@ scanfi_extract <- function(
               paste0("nfilc_", nfilc_classes$name)
             )]
           } else {
-        
             # Extract point value from SCANFI raster. It appears to be possible
             # that a point falls such that it extracts from two raster tiles,
             # so handle that possibility below.
@@ -4890,8 +4882,10 @@ scanfi_extract <- function(
               warning = function(w) {
                 if (
                   conditionMessage(w) ==
-                    paste0("longer object length is not a multiple of shorter",
-                    " object length")
+                    paste0(
+                      "longer object length is not a multiple of shorter",
+                      " object length"
+                    )
                 ) {
                   warning(paste0(
                     "[SCANFI (",
@@ -4918,8 +4912,8 @@ scanfi_extract <- function(
             )
           }
         } else {
-          # For other SCANFI variables, if buffered, extract using 
-          # exactextractr::exact_extract(). If not, extract using 
+          # For other SCANFI variables, if buffered, extract using
+          # exactextractr::exact_extract(). If not, extract using
           # terra::extract().
           if (buffered == TRUE) {
             data[
@@ -4945,7 +4939,7 @@ scanfi_extract <- function(
       }
     }
   }
-  
+
   # Check if attributes were found and stored from input data. If they were
   # found reattach.
   if (exists("attrs")) {
@@ -4958,20 +4952,21 @@ scanfi_extract <- function(
   if (!is.null(site_name)) {
     names(data)[names(data) == "SurveyAreaIdentifier"] <- site_name
   }
-  
+
   # Remove SCANFI files if requested.
   if (retain == FALSE) {
-    
     # Check that if default directory doesn't exist an alterate has been
     # specified.
-    if(is.null(dl_path) & !dir.exists("./scanfi")) {
-      warning("[SCANFI Extraction] unable to find default SCANFI",
-              " directory and no alternate specified using dl_path argument",
-              ". No files will be removed.",
-              call. = FALSE)
+    if (is.null(dl_path) & !dir.exists("./scanfi")) {
+      warning(
+        "[SCANFI Extraction] unable to find default SCANFI",
+        " directory and no alternate specified using dl_path argument",
+        ". No files will be removed.",
+        call. = FALSE
+      )
     } else {
       message(paste0("[SCANFI Extraction] task complete. Removing files."))
-      
+
       file.remove(list.files(
         ifelse(is.null(dl_path), "./scanfi", paste0(dl_path, "/scanfi")),
         full.names = TRUE
@@ -5012,7 +5007,7 @@ daymet_download <- function(
   # via email that they are complete or if you have your own completed request
   # IDs.
   dl_path = NULL # optional argument to provide path to download data to. By
-  # default, data is downloaded to a subfolder 'worldclim/' in the working 
+  # default, data is downloaded to a subfolder 'worldclim/' in the working
   # directory.
 ) {
   # Check packages
@@ -5063,7 +5058,6 @@ daymet_download <- function(
     )
   }
 
-
   # Check whether information on alternate column names has been stored
   # in the attributes by data_fmt(). However, prioritize alternate column names
   # specified in the current call.
@@ -5082,9 +5076,9 @@ daymet_download <- function(
   if (is.null(date_day) & !is.null(attr(data, "date_day"))) {
     date_day <- attr(data, "date_day")
   }
-  
+
   # Check that all specified column names are present in the data.
-  
+
   # Gather all potentially specified columns.
   specified_cols <- c(site_name, date_year, date_month, date_day)
 
@@ -5093,7 +5087,7 @@ daymet_download <- function(
 
   data_cols <- names(data)
 
-  # Compare to columns present in data. Return error if any specified columns 
+  # Compare to columns present in data. Return error if any specified columns
   # are not present. 'if' wrapper needed for when alternate column names exist
   # in the attributes of the data, but conversion of those columns to
   # standardized names has already taken place in data_fmt().
@@ -5117,30 +5111,30 @@ daymet_download <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
   data$SurveyAreaIdentifier <- as.character(data$SurveyAreaIdentifier)
 
   if (!is.null(date_year) & !("survey_year" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "survey_year" = !!date_year)
   }
 
   data$survey_year <- as.numeric(data$survey_year)
 
   if (!is.null(date_month) & !("survey_month" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "survey_month" = !!date_month)
   }
 
@@ -5156,10 +5150,10 @@ daymet_download <- function(
   data$survey_month <- as.numeric(data$survey_month)
 
   if (!is.null(date_day) & !("survey_day" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "survey_day" = !!date_day)
   }
 
@@ -5212,12 +5206,12 @@ daymet_download <- function(
       study_area <- terra::ext(data) %>%
         terra::vect(crs = orig_crs) %>%
         terra::project("ESRI:102001") %>%
-        terra::buffer(20000)# Arbitrarily high number selected (20km).
+        terra::buffer(20000) # Arbitrarily high number selected (20km).
       # Maybe unnecessary, could reduce download size.
     } else {
       study_area <- terra::ext(data) %>%
         terra::vect(crs = orig_crs) %>%
-        terra::buffer(20000)# Arbitrarily high number selected (20km).
+        terra::buffer(20000) # Arbitrarily high number selected (20km).
       # Maybe unnecessary, could reduce download size.
     }
 
@@ -5251,7 +5245,6 @@ daymet_download <- function(
 
   # By default, take user through request submission process.
   if (daymet_transfer == FALSE) {
-    
     # Build a request for each surveyed year to be submitted to AppEEARS. This
     # request will download data for every day between the first and last
     # observation date in each year.
@@ -5399,7 +5392,7 @@ daymet_download <- function(
   } else {
     # If transfer requested, search for request IDs saved externally. If not
     # present, return error.
-    
+
     if (
       file.exists(ifelse(
         is.null(dl_path),
@@ -5498,7 +5491,7 @@ daymet_extract <- function(
   # be left NULL and still function properly if originally specified in a call
   # to data_fmt().
   dl_path = NULL, # optional argument to provide path to download data to. By
-  # default, data is downloaded to a subfolder 'daymet/' in the working 
+  # default, data is downloaded to a subfolder 'daymet/' in the working
   # directory.
   retain = TRUE
 ) {
@@ -5520,16 +5513,16 @@ daymet_extract <- function(
       call. = FALSE
     )
   }
-  
+
   # Check that DAYMET request information is supplied.
-  if(missing(daymet_reqs)) {
+  if (missing(daymet_reqs)) {
     stop(
       "[Daymet Extraction] no Daymet request details are provided to extract from.",
       " Please provide a named list with a element containing the request ID for",
       " each year of data downloaded, named with the corresponding year. Data ",
       " can be downloaded using daymet_download().",
       call. = FALSE
-    )    
+    )
   }
 
   # Check whether information on alternate column names has been stored
@@ -5575,7 +5568,7 @@ daymet_extract <- function(
   }
 
   # Check that all specified column names are present in the data.
-  
+
   # Gather all potentially specified columns.
   specified_cols <- c(site_name, date_year, date_month, date_day)
 
@@ -5584,7 +5577,7 @@ daymet_extract <- function(
 
   data_cols <- names(data)
 
-  # Compare to columns present in data. Return error if any specified columns 
+  # Compare to columns present in data. Return error if any specified columns
   # are not present. 'if' wrapper needed for when alternate column names exist
   # in the attributes of the data, but conversion of those columns to
   # standardized names has already taken place in data_fmt().
@@ -5609,30 +5602,30 @@ daymet_extract <- function(
   # Conform specified columns to naturecounts default column names. Calls to
   # st_sf() needed to avoid sf specific issue with attributes.
   if (!is.null(site_name) & !("SurveyAreaIdentifier" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "SurveyAreaIdentifier" = !!site_name)
   }
 
   data$SurveyAreaIdentifier <- as.character(data$SurveyAreaIdentifier)
 
   if (!is.null(date_year) & !("survey_year" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "survey_year" = !!date_year)
   }
 
   data$survey_year <- as.numeric(data$survey_year)
 
   if (!is.null(date_month) & !("survey_month" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "survey_month" = !!date_month)
   }
 
@@ -5648,10 +5641,10 @@ daymet_extract <- function(
   data$survey_month <- as.numeric(data$survey_month)
 
   if (!is.null(date_day) & !("survey_day" %in% data_cols)) {
-    if(input_fmt$type == "sf") {
+    if (input_fmt$type == "sf") {
       data <- sf::st_sf(data)
     }
-    
+
     data <- dplyr::rename(data, "survey_day" = !!date_day)
   }
 
@@ -5676,9 +5669,9 @@ daymet_extract <- function(
     # Convert to sf object for use in workflow.
     data <- sf::st_as_sf(data)
   }
-  
+
   # If buffered, check for packages necessary in buffered workflow.
-  if(buffered == TRUE) {
+  if (buffered == TRUE) {
     have_pkg_check("exactextractr")
   }
 
@@ -5770,7 +5763,7 @@ daymet_extract <- function(
     "-",
     data$survey_day
   ))
-  
+
   # Note any dates that do not have available Daymet data. Warn.
   missing_dates <- sort(data$date[!(data$date %in% all_dates)])
 
@@ -5788,7 +5781,7 @@ daymet_extract <- function(
   # Fetch all dates with available data.
   dates <- sort(unique(data$date[data$date %in% all_dates]))
 
-  # Open vector to store site names that are outside of spatial extent of 
+  # Open vector to store site names that are outside of spatial extent of
   # provided Daymet files.
   bad_sites <- c()
 
@@ -5839,8 +5832,8 @@ daymet_extract <- function(
           dplyr::distinct() %>%
           sf::st_transform(sf::st_crs(daymet))
 
-        # Check if the site falls outside of or is only partially covered by 
-        # the spatial extent of the provided Daymet rasters. If so, warn and 
+        # Check if the site falls outside of or is only partially covered by
+        # the spatial extent of the provided Daymet rasters. If so, warn and
         # store site name to avoid extracting data for it later.
         if (
           !terra::is.related(
@@ -5884,8 +5877,8 @@ daymet_extract <- function(
             call. = FALSE
           )
         } else {
-          # If no issues with coverage, proceed to extraction. If buffered, 
-          # extract using exactextractr::exact_extract(). If not, extract 
+          # If no issues with coverage, proceed to extraction. If buffered,
+          # extract using exactextractr::exact_extract(). If not, extract
           # using terra::extract().
           if (buffered == TRUE) {
             data[
@@ -5922,7 +5915,7 @@ daymet_extract <- function(
 
     # Code to grab nearest raster value for sites outside of raster coverage.
     # Not sure whether to keep this since we are warning users about these sites
-    # and saying nothing will be returned. Maybe keep as an option 
+    # and saying nothing will be returned. Maybe keep as an option
     # (nearest = TRUE)?
     #
     # if (
@@ -5939,15 +5932,15 @@ daymet_extract <- function(
     #     " raster coverage. For these cells, the nearest cell value will be",
     #     " used. Repairing now."
     #   ))
-    # 
+    #
     #   for (j in dates) {
     #     sites_to_fill <- unique(data$SurveyAreaIdentifier[
     #       is.na(data[, i]) & data$date == j
     #     ])
-    # 
+    #
     #     if (nrow(sites_to_fill) > 0) {
     #       j_date <- as.Date(j)
-    # 
+    #
     #       filename <- gsub(
     #         pattern = "DAYMET_",
     #         replacement = "DAYMET.",
@@ -5960,7 +5953,7 @@ daymet_extract <- function(
     #               i
     #         ]
     #       )
-    # 
+    #
     #       daymet <- terra::rast(ifelse(
     #         is.null(dl_path),
     #         paste0(
@@ -5979,7 +5972,7 @@ daymet_extract <- function(
     #           ".tif"
     #         )
     #       ))
-    # 
+    #
     #       for (k in sites_to_fill) {
     #         tmp <- data %>%
     #           dplyr::filter(SurveyAreaIdentifier == k) %>%
@@ -5987,12 +5980,12 @@ daymet_extract <- function(
     #           dplyr::distinct() %>%
     #           sf::st_buffer(2500) %>%
     #           sf::st_transform(terra::crs(daymet))
-    # 
+    #
     #         daymet_crop <- terra::crop(daymet, terra::vect(tmp)) %>%
     #           terra::as.points()
-    # 
+    #
     #         near.pt <- terra::nearest(terra::vect(tmp), daymet_crop)$to_id
-    # 
+    #
     #         data[
     #           data$SurveyAreaIdentifier == k & data$date == j,
     #           i
@@ -6166,7 +6159,7 @@ nc_covariates_merge <- function(
     date_lubridate <- attr(covariate_data, "date_lubridate")
   }
 
-  # Joining procedure for original data in data frame objects. 
+  # Joining procedure for original data in data frame objects.
   if (original_fmt == "data.frame") {
     # Remove SurveyAreaIdentifier column as this is a less reliable joiner
     # than coordinate data.
@@ -6254,7 +6247,7 @@ nc_covariates_merge <- function(
     }
   }
 
-  # Joining procedure for original data in sf objects. 
+  # Joining procedure for original data in sf objects.
   if (original_fmt == "sf") {
     # Remove SurveyAreaIdentifier column as this is a less reliable joiner
     # than coordinate data.
@@ -6283,7 +6276,7 @@ nc_covariates_merge <- function(
       original_data$Y <- NULL
     }
 
-    # Edge case: there is a column in the original data called longitude that 
+    # Edge case: there is a column in the original data called longitude that
     # needs to be preserved.
     if ("longitude" %in% names(original_data)) {
       lon_storage <- original_data$longitude
@@ -6291,7 +6284,7 @@ nc_covariates_merge <- function(
       original_data$longitude <- NULL
     }
 
-    # Edge case: there is a column in the original data called latitude that 
+    # Edge case: there is a column in the original data called latitude that
     # needs to be preserved.
     if ("latitude" %in% names(original_data)) {
       lat_storage <- original_data$latitude
@@ -6434,7 +6427,7 @@ nc_covariates_merge <- function(
     )]
   }
 
-  # Joining procedure for original data in data frame objects. 
+  # Joining procedure for original data in data frame objects.
   if (original_fmt == "terra") {
     # Remove SurveyAreaIdentifier column as this is a less reliable joiner
     # than coordinate data.
@@ -6463,7 +6456,7 @@ nc_covariates_merge <- function(
       original_data$y <- NULL
     }
 
-    # Edge case: there is a column in the original data called longitude that 
+    # Edge case: there is a column in the original data called longitude that
     # needs to be preserved.
     if ("longitude" %in% names(original_data)) {
       lon_storage <- original_data$longitude
@@ -6471,7 +6464,7 @@ nc_covariates_merge <- function(
       original_data$longitude <- NULL
     }
 
-    # Edge case: there is a column in the original data called latitude that 
+    # Edge case: there is a column in the original data called latitude that
     # needs to be preserved.
     if ("latitude" %in% names(original_data)) {
       lat_storage <- original_data$latitude
@@ -6743,7 +6736,6 @@ nc_covariates <- function(
   # that a user first ran nc_covariates with daymet_transfer = FALSE, got other
   # requested covariate data, and then runs it again to only get Daymet data.
   if (daymet_transfer == FALSE) {
-    
     # Format data.
     data <- data_fmt(
       data,
